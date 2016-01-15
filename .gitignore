@@ -1,0 +1,14 @@
+# Key files
+*.key
+
+# IDE
+.idea
+
+# data files
+data/
+
+# Dev stuff
+lib/
+
+# Compiled files
+*.pyc

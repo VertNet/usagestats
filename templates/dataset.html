@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+        <title>Monthly VertNet Data Usage Report - Dataset page</title>
+
+        <!-- Bootstrap -->
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+
+        <!--Font Awesome-->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+
+        <!--Data Tables-->
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/s/bs/dt-1.10.10/datatables.min.css"/>
+
+
+        <style>
+            body {
+                background-color: lightgray;
+            }
+            .huge {
+                font-size: 50px;
+            }
+            .large {
+                font-size: 30px;
+            }
+            section {
+                margin-top: 50px;
+            }
+            .section-header {
+                padding: 50px;
+            }
+
+
+        </style>
+
+        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+        <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+        <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <!--Google Charts API-->
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
+        <script type="text/javascript">
+            // google.load("visualization", "1", {packages:["corechart","geochart"]});
+            // google.setOnLoadCallback(drawCharts);
+
+        </script>
+
+
+    </head>
+    <body>
+
+        <div class="container">
+            <div class="page-header">
+                <h1>{{dataset.orgname}}, resource {{dataset.ccode}}</h1>
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <h2><small><i>GBIF dataset id: </i>{{dataset.gbifdatasetid}}</small></h2>
+                    </div>
+                    <div class="col-xs-12 col-sm-6 text-right">
+                        <h2><small><span class="label label-warning">
+                            <a href="http://www.github.com/{{dataset.github_orgname}}/{{dataset.github_reponame}}" target="_blank">
+                                <i class="fa fa-github-alt"></i> {{dataset.github_orgname}}/{{dataset.github_reponame}}
+                            </a>
+                        </span></small></h2>
+                    </div>
+                </div>
+            </div>
+
+            <section id="report_list">
+
+                {% if periods > 0 %}
+                    {% if periods == 1 %}
+
+                <div class="row section-header">
+                    <div class="col-xs-12 text-center">
+                        <p class="large">There is 1 report available for this dataset</p>
+                    </div>
+                </div>
+
+                    {% else %}
+
+                <div class="row section-header">
+                    <div class="col-xs-12 text-center">
+                        <p class="large">There are {{periods}} reports available for this dataset</p>
+                    </div>
+                </div>
+
+                    {% endif %}
+
+                <div class="row text-center large">
+                    {% for period in period_list %}
+                    <p><a class="button btn-default btn-lg btn-block" href="./{{period.url}}/">
+                        {{period.text}}
+                    </a></p>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+
+                <div class="row section-header">
+                    <div class="col-xs-12 text-center">
+                        <p class="large">NO REPORTS AVAILABLE FOR THIS DATASET</p>
+                    </div>
+                </div>
+
+                {% endif %}
+
+            </section>
+
+        </div>
+
+        <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        <!-- Include all compiled plugins (below), or include individual files as needed -->
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+    </body>
+</html>

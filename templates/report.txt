@@ -1,0 +1,35 @@
+{% autoescape true %}Report for Institution Code {{dataset.icode}}, Resource {{dataset.ccode}}
+Usage stats for {{period.period.strftime('%B %Y')}}, generated on {{report.created.strftime('%Y/%m/%d')}}
+
+SEARCHES:
+
+Number of searches that retrieved data from the resource: {{report.searches.events}}
+Number of records retrieved in searches: {{report.searches.records}}
+Number of different countries where searches have been originated: {{ report.searches.query_countries | length }}
+
+Origin of the queries that retrieved data from the resource: {% for country in report.searches.query_countries %}
+	Country: {{country.query_country}} ; Times: {{country.times}}{% endfor %}
+
+Dates of the queries that retrieved data from the resource: {% for query_date in report.searches.query_dates %}
+	Date: {{query_date.query_date}} ; Times: {{query_date.times}}{% endfor %}
+
+List of queries that retrieved data from the resource: {% for query in report.searches.query_terms %}
+	Query: "{{query.query_terms}}" ; Times: {{query.times}}{% endfor %}
+
+DOWNLOADS:
+
+Number of download events that retrieved data from the resource: {{report.downloads.events}} (out of {{period.downloads_in_period}} download events in this period)
+Total number of records downloaded: {{report.downloads.records}}
+Number of different countries: {{ report.downloads.query_countries | length }}
+
+Origin of the queries that retrieved data from the resource: {% for country in report.downloads.query_countries %}
+	Country: {{country.query_country}} ; Times: {{country.times}}{% endfor %}
+
+Dates of the queries that retrieved data from the resource: {% for query_date in report.downloads.query_dates %}
+	Date: {{query_date.query_date}} ; Times: {{query_date.times}}{% endfor %}
+
+List of queries that retrieved data from the resource: {% for query in report.downloads.query_terms %}
+	Query: "{{query.query_terms}}" ; Times: {{query.times}}{% endfor %}
+
+
+End of report.{% endautoescape %}
