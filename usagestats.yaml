@@ -1,4 +1,4 @@
-application: vertnet-portal
+# application: vertnet-portal  # deprecated, use --project vertnet-portal instead
 module: tools-usagestats
 runtime: python27
 api_version: 1
