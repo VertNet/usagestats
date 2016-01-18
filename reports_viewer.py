@@ -99,7 +99,7 @@ class DatasetHandler(webapp2.RequestHandler):
         period_query = Report.query(Report.reported_resource == dataset_key).fetch(keys_only=True)
         period_list = [
             {
-                "text":x.id().split("|")[0][:4]+"-"+x.id().split("|")[0][4:],
+                "text": x.id().split("|")[0][:4]+"-"+x.id().split("|")[0][4:],
                 "url": x.id().split("|")[0]
             } for x in period_query]
 
