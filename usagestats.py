@@ -27,24 +27,31 @@ from dev import *
 __author__ = 'jotegui'
 
 
-class MainHandler(webapp2.RequestHandler):
-    def get(self):
-        self.redirect("/periods")
+# class MainHandler(webapp2.RequestHandler):
+#     def get(self):
+#         self.redirect("/periods")
+
+
+admin = webapp2.WSGIApplication([
+
+    # Generator tasks
+    webapp2.Route(r'/parser/<period>', handler=ProcessPeriod),
+    webapp2.Route(r'/parser/nogithub/<period>', handler=ProcessPeriodNoGithub),
+    webapp2.Route(r'/parser/testinggithub/<period>', handler=ProcessPeriodTestingGithub),
+
+], debug=True)
+
 
 app = webapp2.WSGIApplication([
-    # Dev and testing
-    # ('/test', TestHandler),
-    # ('/dev_setup', DevSetup),
 
     # Main handler
-    webapp2.Route('/', handler=MainHandler),
+    # webapp2.Route('/', handler=MainHandler),
 
     # Setup routes
     webapp2.Route('/setup_datasets', handler=DatasetsSetupHandler, name='setup_datasets'),
 
     # Report viewer routes
     webapp2.Route('/reports', handler=ReportListHandler),
-    webapp2.Route(r'/reports/sha/<sha>/', handler=StoreReportHandler, name='process_report'),
     webapp2.Route(r'/reports/<gbifdatasetid>/', handler=DatasetHandler, name='dataset'),
     webapp2.Route(r'/reports/<gbifdatasetid>/<period>/', handler=ReportHandler, name='report'),
     webapp2.Route(r'/reports/<gbifdatasetid>/<period>/json', handler=JSONReportHandler, name='report_json'),
@@ -54,12 +61,6 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/periods', handler=PeriodListHandler),
     webapp2.Route('/status', handler=StatusHandler),
     webapp2.Route(r'/status/period/<period>', handler=PeriodStatusHandler),
-
-    # Generator tasks
-    webapp2.Route(r'/parser/<period>', handler=ProcessPeriod),
-    webapp2.Route(r'/parser/nogithub/<period>', handler=ProcessPeriodNoGithub),
-    # webapp2.Route(r'/parser/geteventslist/', handler=GetEventsList),
-    # webapp2.Route(r'/parser/parseeventslist/', handler=ParseEventList),
-    # webapp2.Route(r'/parser/processevents/', handler=ProcessEvents),
+    webapp2.Route(r'/reports/sha/<sha>/', handler=StoreReportHandler, name='process_report'),
 
 ], debug=True)

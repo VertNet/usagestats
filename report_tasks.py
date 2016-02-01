@@ -30,7 +30,7 @@ class ProcessPeriod(webapp2.RequestHandler):
     def post(self):
         self.get(period = self.request.get('period'))
 
-    def get(self, period, github=True):
+    def get(self, period, github=True, testing=False):
         if len(period) == 6:
             y, m = (int(period[:4]), int(period[-2:]))
             p = Period(id = period)
@@ -42,7 +42,7 @@ class ProcessPeriod(webapp2.RequestHandler):
             # Launching GetEventsList task for downloads and searches
             for t in ['download', 'search']:
                 logging.info("Launching 'GetEventList' task on url %s" % GETEVENTSLIST)
-                params = {'period': period, 't': t, 'github': github}
+                params = {'period': period, 't': t, 'github': github, 'testing': testing}
 
                 deferred.defer(get_events_list, params=params)
 
@@ -64,11 +64,21 @@ class ProcessPeriodNoGithub(webapp2.RequestHandler):
         pp.get(period=period, github=False)
 
 
+class ProcessPeriodTestingGithub(webapp2.RequestHandler):
+    def post(self):
+        self.get(period=self.request.get('period'))
+
+    def get(self, period):
+        pp = ProcessPeriod()
+        pp.get(period=period, testing=True)
+
+
 def get_events_list(params):
 
     period = params['period']
     t = params['t']
     github = params['github']
+    testing = params['testing']
 
     logging.info("Building %s query" % t)
     if t == 'download':
@@ -169,7 +179,8 @@ def get_events_list(params):
             "type": t,
             "gbifdatasetid": resource,
             "res": resources[resource],
-            "github": github
+            "github": github,
+            "testing": testing
         }
 
         deferred.defer(process_events, params=params)
@@ -191,6 +202,7 @@ def process_events(params):
     gbifdatasetid = params['gbifdatasetid']
     event = params['res']
     github = params['github']
+    testing = params['testing']
 
     logging.info("Processing %s" % gbifdatasetid)
 
@@ -295,7 +307,8 @@ def process_events(params):
             # Send GitHub notifications serially
             logging.info("Sending GitHub notifications")
             params = {
-                "period": period
+                "period": period,
+                "testing": testing
             }
             deferred.defer(send_all_to_github, params=params)
         else:
@@ -317,18 +330,20 @@ def process_events(params):
 def send_all_to_github(params):
 
     period = params['period']
+    testing = params['testing']
+
     period_key = ndb.Key("Period", period)
 
     report_keys = Report.query(Report.reported_period == period_key).fetch(keys_only=True)
 
     for report_key in report_keys:
 
-        send_to_github(report_key, period)
+        send_to_github(report_key, period, testing)
 
         time.sleep(2)
 
 
-def send_to_github(report_key, period):
+def send_to_github(report_key, period, testing):
 
         gbifdatasetid = report_key.id().split("|")[1]
         logging.info("Sending issue for dataset {0}".format(gbifdatasetid))
@@ -366,9 +381,10 @@ Thank you for being a part of VertNet.
         logging.info(org)
         logging.info(repo)
 
-        # TODO: remove these two lines
-        org = 'jotegui'
-        repo = 'statReports'
+        if testing:
+            logging.info("Using testing repositories in jotegui")
+            org = 'jotegui'
+            repo = 'statReports'
 
         headers = {'User-Agent': 'VertNet', 'Authorization': 'token {0}'.format(key)}
         url = 'https://api.github.com/repos/{0}/{1}/issues'.format(org, repo)
