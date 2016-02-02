@@ -1,4 +1,11 @@
-# application: vertnet-portal  # deprecated, use --project vertnet-portal instead
+# DEPLOYMENT INFO
+#
+# command: gcloud preview app deploy usagestats.yaml
+# args:
+#   -- project vertnet-portal  # Optional, no need if gcloud is configured to use this project
+#   -- version prod|dev  # Indicates version to use. If 'Prod', --promote flag should be used
+#   -- promote  # Optional, removes the version id from the deployment URL. Skip for testing
+
 module: tools-usagestats
 runtime: python27
 api_version: 1
