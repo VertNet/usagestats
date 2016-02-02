@@ -1,7 +1,9 @@
+import base64
 import json
 import logging
 from datetime import datetime, timedelta
 import time
+from jinjafilters import JINJA_ENVIRONMENT
 
 from models import Period, Report, Search, Download, QueryCountry, QueryDate, QueryTerms
 from util import add_time_limit, cartodb_query, geonames_query, apikey
@@ -39,8 +41,17 @@ class ProcessPeriod(webapp2.RequestHandler):
             p.status = 'in progress'
             p.put()
 
+            if github is True:
+                if testing is True:
+                    logging.info("Launching tasks with TESTING repos")
+                else:
+                    logging.info("Launching tasks with FINAL repos")
+            else:
+                logging.info("Launching tasks WITHOUT repos")
+
             # Launching GetEventsList task for downloads and searches
             for t in ['download', 'search']:
+
                 logging.info("Launching 'GetEventList' task on url %s" % GETEVENTSLIST)
                 params = {'period': period, 't': t, 'github': github, 'testing': testing}
 
@@ -196,7 +207,6 @@ def get_events_list(params):
 @ndb.transactional()
 def process_events(params):
 
-    logging.info("Called deferred function")
     period = params['period']
     t = params['type']
     gbifdatasetid = params['gbifdatasetid']
@@ -348,14 +358,65 @@ def send_to_github(report_key, period, testing):
         gbifdatasetid = report_key.id().split("|")[1]
         logging.info("Sending issue for dataset {0}".format(gbifdatasetid))
 
+        # Build variables
         dataset_key = ndb.Key("Dataset", gbifdatasetid)
         dataset_entity = dataset_key.get()
         period_key = ndb.Key("Period", period)
         period_entity = period_key.get()
+        report_entity = report_key.get()
 
+        # GitHub stuff
+        org = dataset_entity.github_orgname
+        repo = dataset_entity.github_reponame
+        logging.info(org)
+        logging.info(repo)
+        key = apikey('ghb')
+
+        headers = {
+            'User-Agent': 'VertNet',
+            'Authorization': 'token {0}'.format(key),
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+        # Testing block
+        if testing:
+            logging.info("Using testing repositories in jotegui")
+            org = 'jotegui'
+            repo = 'statReports'
+
+        # Upload txt report to GitHub
+        template = JINJA_ENVIRONMENT.get_template('report.txt')
+        content = template.render(
+            dataset=dataset_entity,
+            report=report_entity,
+            period=period_entity
+        )
+        message = content.split("\n")[1]  # 2nd line of txt report
+        path = "reports/{0}.txt".format("-".join([dataset_entity.icode, dataset_entity.ccode, "-".join([period[:4], period[4:]])]))
+        logging.info(path)
+        content_enc = base64.b64encode(content.encode('utf-8'))
+        commiter = {'name': 'VertNet', 'email': 'vertnetinfo@vertnet.org'}  # I think API token overrides this
+        json_input = json.dumps({"message": message, "commiter": commiter, "content": content_enc})
+        request_url = 'https://api.github.com/repos/{0}/{1}/contents/{2}'.format(org, repo, path)
+        logging.info(request_url)
+        r = urlfetch.fetch(
+            url=request_url,
+            method=urlfetch.PUT,
+            headers=headers,
+            payload=json_input
+        )
+        logging.info(r.status_code)
+        if r.status_code == 201:
+            logging.info("Report successfully stored.")
+            report_entity.stored = True
+        else:
+            logging.error("Report could not be stored.")
+            logging.error(r.content)
+            report_entity.stored = False
+
+        # Issue creation
         link = "http://"+MODULE+"/reports/"+gbifdatasetid+"/"+period+"/"
         link_all = "http://"+MODULE+"/reports/"+gbifdatasetid+"/"
-        logging.info(link)
 
         title = 'Monthly VertNet data use report for {0}-{1}, resource {2}'.format(period_entity.year, period_entity.month, dataset_entity.ccode)
         body = """Your monthly VertNet data use report is ready!
@@ -374,19 +435,6 @@ Thank you for being a part of VertNet.
 """.format(link, link_all)
         labels = ['report']
 
-        key = apikey('ghb')
-
-        org = dataset_entity.github_orgname
-        repo = dataset_entity.github_reponame
-        logging.info(org)
-        logging.info(repo)
-
-        if testing:
-            logging.info("Using testing repositories in jotegui")
-            org = 'jotegui'
-            repo = 'statReports'
-
-        headers = {'User-Agent': 'VertNet', 'Authorization': 'token {0}'.format(key)}
         url = 'https://api.github.com/repos/{0}/{1}/issues'.format(org, repo)
         data = json.dumps({'title': title, 'body': body, 'labels': labels})
 
@@ -397,14 +445,15 @@ Thank you for being a part of VertNet.
             payload=data
         )
         logging.info(r.status_code)
-        report = report_key.get()
         if r.status_code == 201:
-            logging.info("Report successfully sent.")
-            report.issue_sent = True
+            logging.info("Issue successfully sent.")
+            report_entity.issue_sent = True
         else:
-            logging.warning("Issue could not be sent:")
-            logging.warning(r.content)
-            report.issue_sent = False
-        report.put()
+            logging.error("Issue could not be sent:")
+            logging.error(r.content)
+            report_entity.issue_sent = False
+
+        # Store "stored" and "issue_sent" properties
+        report_entity.put()
 
         return

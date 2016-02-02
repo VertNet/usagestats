@@ -139,6 +139,7 @@ Ancestor: Period
     downloads = ndb.StructuredProperty(Download, default=Download())
     year_data = ndb.StructuredProperty(YearData)
     history_data = ndb.StructuredProperty(HistoryData)
+    stored = ndb.BooleanProperty()
     issue_sent = ndb.BooleanProperty()
     done = ndb.ComputedProperty(lambda self:
                                 # self.downloads.status == 'done' and

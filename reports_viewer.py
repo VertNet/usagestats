@@ -5,6 +5,7 @@ from datetime import datetime
 
 from util import *
 from models import *
+from jinjafilters import *
 
 from google.appengine.api import urlfetch
 
@@ -19,16 +20,6 @@ __author__ = 'jotegui'
 - Update template fields to fit new model schema (e.g. search_events)
 
 """
-
-JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-JINJA_ENVIRONMENT.filters['querycountriesformat'] = query_countries_format
-JINJA_ENVIRONMENT.filters['querydatesformat'] = query_dates_format
-JINJA_ENVIRONMENT.filters['querytermsformat'] = query_terms_format
-JINJA_ENVIRONMENT.filters['percentageformat'] = percentage_format
 
 
 class ReportListHandler(webapp2.RequestHandler):
@@ -236,7 +227,7 @@ class StoreReportHandler(webapp2.RequestHandler):
 
         # Searches
         if 'searches' in content:
-            searches = Searches()
+            searches = Search()
             searches.search_events = content['searches']['searches']
             searches.records_searched = content['searches']['records']
             for d in content['searches']['dates']:
@@ -259,7 +250,7 @@ class StoreReportHandler(webapp2.RequestHandler):
 
         # Downloads
         if 'downloads' in content:
-            downloads = Downloads()
+            downloads = Download()
             downloads.download_events = content['downloads']['downloads']
             downloads.downloads_in_period = content['downloads']['downloads_period']
             downloads.records_downloaded = content['downloads']['records']

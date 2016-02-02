@@ -1,3 +1,6 @@
+import os
+import jinja2
+
 __author__ = 'jotegui'
 
 
@@ -19,3 +22,14 @@ def query_terms_format(query_terms):
 def percentage_format(fl):
 
     return str(round(fl, 2))+"%"
+
+
+JINJA_ENVIRONMENT = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
+    extensions=['jinja2.ext.autoescape'],
+    autoescape=True)
+
+JINJA_ENVIRONMENT.filters['querycountriesformat'] = query_countries_format
+JINJA_ENVIRONMENT.filters['querydatesformat'] = query_dates_format
+JINJA_ENVIRONMENT.filters['querytermsformat'] = query_terms_format
+JINJA_ENVIRONMENT.filters['percentageformat'] = percentage_format
