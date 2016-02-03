@@ -16,7 +16,7 @@ __author__ = 'jotegui'
 
 # URLs
 MODULE_NAME = "tools-usagestats"
-MODULE = modules.get_hostname(module = MODULE_NAME)
+MODULE = modules.get_hostname(module = MODULE_NAME).replace("prod.", "")  # Remove the version id
 
 GETEVENTSLIST = "/parser/geteventslist/"
 GETEVENTSLIST_FULL = "http://" + MODULE + GETEVENTSLIST
@@ -323,9 +323,9 @@ def process_events(params):
             deferred.defer(send_all_to_github, params=params)
         else:
             logging.info("Skipping GitHub notifications")
-    else:
-        p.status = 'failed'
-        logging.warning("Processing period failed. Not all searches/downloads were processed")
+    # else:
+        # p.status = 'failed'
+        # logging.warning("Processing period failed. Not all searches/downloads were processed")
     p.put()
 
     # # TODO: Build response
@@ -371,18 +371,21 @@ def send_to_github(report_key, period, testing):
         logging.info(org)
         logging.info(repo)
         key = apikey('ghb')
-
-        headers = {
-            'User-Agent': 'VertNet',
-            'Authorization': 'token {0}'.format(key),
-            "Accept": "application/vnd.github.v3+json"
-        }
+        user_agent = 'VertNet'
 
         # Testing block
         if testing:
             logging.info("Using testing repositories in jotegui")
             org = 'jotegui'
             repo = 'statReports'
+            user_agent = 'jotegui'
+            key = apikey('jot')
+
+        headers = {
+            'User-Agent': user_agent,
+            'Authorization': 'token {0}'.format(key),
+            "Accept": "application/vnd.github.v3+json"
+        }
 
         # Upload txt report to GitHub
         template = JINJA_ENVIRONMENT.get_template('report.txt')
@@ -410,6 +413,7 @@ def send_to_github(report_key, period, testing):
             logging.info("Report successfully stored.")
             report_entity.stored = True
         else:
+            # TODO: Check why "stored" keeps being False even if report IS stored
             logging.error("Report could not be stored.")
             logging.error(r.content)
             report_entity.stored = False
@@ -424,7 +428,7 @@ You can see the HTML rendered version of the reports with this link:
 
 {0}
 
-Raw text and JSON-formatted versions of the report are also available for download from this link.
+Raw text and JSON-formatted versions of the report are also available for download from this link. In addition, a copy of the text version has been uploaded to your GitHub repository, under the "Reports" folder.
 Also, a full list of all reports can be accessed here:
 
 {1}
