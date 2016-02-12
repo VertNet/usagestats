@@ -35,9 +35,10 @@ __author__ = 'jotegui'
 admin = webapp2.WSGIApplication([
 
     # Generator tasks
-    webapp2.Route(r'/parser/<period>', handler=ProcessPeriod),
     webapp2.Route(r'/parser/nogithub/<period>', handler=ProcessPeriodNoGithub),
     webapp2.Route(r'/parser/testinggithub/<period>', handler=ProcessPeriodTestingGithub),
+    webapp2.Route(r'/parser/reports/<sha>/', handler=StoreReportHandler),
+    webapp2.Route(r'/parser/<period>', handler=ProcessPeriod),
 
 ], debug=True)
 
@@ -51,7 +52,7 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/setup_datasets', handler=DatasetsSetupHandler, name='setup_datasets'),
 
     # Report viewer routes
-    webapp2.Route('/reports', handler=ReportListHandler),
+    # webapp2.Route('/reports', handler=ReportListHandler),
     webapp2.Route(r'/reports/<gbifdatasetid>/', handler=DatasetHandler, name='dataset'),
     webapp2.Route(r'/reports/<gbifdatasetid>/<period>/', handler=ReportHandler, name='report'),
     webapp2.Route(r'/reports/<gbifdatasetid>/<period>/json', handler=JSONReportHandler, name='report_json'),
@@ -61,6 +62,5 @@ app = webapp2.WSGIApplication([
     webapp2.Route('/periods', handler=PeriodListHandler),
     webapp2.Route('/status', handler=StatusHandler),
     webapp2.Route(r'/status/period/<period>', handler=PeriodStatusHandler),
-    webapp2.Route(r'/reports/sha/<sha>/', handler=StoreReportHandler, name='process_report'),
 
 ], debug=True)
