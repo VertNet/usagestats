@@ -144,4 +144,4 @@ Ancestor: Period
     done = ndb.ComputedProperty(lambda self:
                                 # self.downloads.status == 'done' and
                                 # self.searches.status == 'done' and
-                                self.issue_sent is True)
+                                self.issue_sent is True and self.stored is True)

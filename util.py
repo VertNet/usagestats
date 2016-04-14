@@ -11,6 +11,10 @@ __author__ = 'jotegui'
 CDB_QUERY_TOO_LARGE_ERROR = 'Your query was not able to finish. Either you have too many queries running or the one you are trying to run is too expensive. Try again.'
 
 
+class ApiQueryMaxRetriesExceededError(Exception):
+    pass
+
+
 def apikey(serv):
     """Return credentials file as a JSON object."""
     path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '{0}.key'.format(serv))
@@ -42,13 +46,13 @@ def api_query(api_url, params):
     """Launch query to an API with the specified query and retrieve the specified field."""
     urlfetch.set_default_fetch_deadline(60)
     finished = False
-    max_retries = 5
+    max_retries = 3
     retries = 0
     while not finished:
         retries += 1
         if retries >= max_retries:
             logging.error("ERROR: Query failed after maximum retries")
-            return None
+            raise ApiQueryMaxRetriesExceededError("Query failed after maximum retries")
         d = urlfetch.fetch(url = api_url, method = urlfetch.POST, payload = urlencode(params)).content
         d = json.loads(d)
         if "error" in d.keys():

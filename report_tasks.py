@@ -27,13 +27,18 @@ PARSEEVENTSLIST_FULL = "http://" + MODULE + PARSEEVENTSLIST
 PROCESSEVENTS = "/parser/processevents/"
 PROCESSEVENTS_FULL = "http://" + MODULE + PROCESSEVENTS
 
+QUEUENAME = "usagestatsqueue"
+
 
 class ProcessPeriod(webapp2.RequestHandler):
     def post(self):
         self.get(period = self.request.get('period'))
 
     def get(self, period, github=True, testing=False):
+
         if len(period) == 6:
+
+            # Create new Period (id=YYYYMM)
             y, m = (int(period[:4]), int(period[-2:]))
             p = Period(id = period)
             p.year = y
@@ -47,23 +52,32 @@ class ProcessPeriod(webapp2.RequestHandler):
                 else:
                     logging.info("Launching tasks with FINAL repos")
             else:
-                logging.info("Launching tasks WITHOUT repos")
+                logging.info("Launching tasks WITHOUT GitHub repos")
 
-            # Launching GetEventsList task for downloads and searches
+            # Launch GetEventsList task for downloads and searches
             for t in ['download', 'search']:
 
                 logging.info("Launching 'GetEventList' task on url %s" % GETEVENTSLIST)
                 params = {'period': period, 't': t, 'github': github, 'testing': testing}
 
-                deferred.defer(get_events_list, params=params)
+                deferred.defer(get_events_list, params=params, _queue=QUEUENAME)
 
-            # # TODO Build response
-            # self.response.headers['content-type'] = "application/json"
-            # self.response.write(json.dumps({"task": str(task)}))
+            logging.info(__name__)
+            try:
+                self.response.headers['content-type'] = "application/json"
+                self.response.write(json.dumps(
+                    {"status": "success", "message": "New period created and extractions launched"}
+                ))
+                return
+            except AttributeError:
+                # When called from one of the accessory handlers
+                return json.dumps({"status": "success", "message": "New period created and extractions launched"})
 
         else:
             self.error(400)
-            self.response.write(json.dumps({"error": "Malformed period"}))
+            self.response.headers["Content-Type"] = "application/json"
+            self.response.write(json.dumps({"status": "error", "message": "Malformed period"}))
+            return
 
 
 class ProcessPeriodNoGithub(webapp2.RequestHandler):
@@ -71,8 +85,15 @@ class ProcessPeriodNoGithub(webapp2.RequestHandler):
         self.get(period=self.request.get('period'))
 
     def get(self, period):
+        if len(period) != 6:
+            self.error(400)
+            self.response.headers["Content-Type"] = "application/json"
+            self.response.write(json.dumps({"status": "error", "message": "Malformed period"}))
+            return
         pp = ProcessPeriod()
-        pp.get(period=period, github=False)
+        resp = pp.get(period=period, github=False)
+        self.response.headers["Content-Type"] = "application/json"
+        self.response.write(resp)
 
 
 class ProcessPeriodTestingGithub(webapp2.RequestHandler):
@@ -80,17 +101,29 @@ class ProcessPeriodTestingGithub(webapp2.RequestHandler):
         self.get(period=self.request.get('period'))
 
     def get(self, period):
+        if len(period) != 6:
+            self.error(400)
+            self.response.headers["Content-Type"] = "application/json"
+            self.response.write(json.dumps({"status": "error", "message": "Malformed period"}))
+            return
         pp = ProcessPeriod()
-        pp.get(period=period, testing=True)
+        resp = pp.get(period=period, testing=True)
+        self.response.headers["Content-Type"] = "application/json"
+        self.response.write(resp)
 
+
+########################################################################################################################
 
 def get_events_list(params):
 
+    # Parse parameters
     period = params['period']
     t = params['t']
     github = params['github']
     testing = params['testing']
 
+    # Extract CartoDB data
+    # Base query
     logging.info("Building %s query" % t)
     if t == 'download':
         query = "SELECT cartodb_id, lat, lon, created_at, query AS query_terms, response_records, " \
@@ -111,6 +144,7 @@ def get_events_list(params):
     data = cartodb_query(query)
     logging.info("Extracted %d entities" % len(data))
 
+    # Format according to the Model classes
     logging.info("Formatting results")
     resources = {}
 
@@ -118,7 +152,7 @@ def get_events_list(params):
 
         # Preformat some fields
         event_created = datetime.strptime(event['created_at'], '%Y-%m-%dT%H:%M:%SZ')
-        event_created = event_created.strftime('%Y-%m-%d')  # Keep just YMD to avoid ast crying
+        event_created = event_created.strftime('%Y-%m-%d')  # Keep just YMD to avoid ast module cry
         event_results = json.loads(event['results_by_resource'])
         event_country = geonames_query(event['lat'], event['lon'])
         event_terms = event['query_terms']
@@ -194,17 +228,25 @@ def get_events_list(params):
             "testing": testing
         }
 
-        deferred.defer(process_events, params=params)
+        deferred.defer(process_events, params=params, _queue=QUEUENAME)
 
-    # # TODO Build response
-    # resp = {
-    #     "resp_keys": resp_keys
-    # }
-    # self.response.headers['content-type'] = "application/json"
-    # self.response.write(json.dumps(resp))
+    resp = {
+        "status": "success",
+        "message": "Event data extracted and formatted",
+        "source": "get_events_list",
+        "data": {
+            "period": period,
+            "type": t,
+            "events": len(data),
+            "resources": len(resources)
+        }
+    }
+    logging.info(resp)
+    return
 
 
-@ndb.transactional()
+########################################################################################################################
+
 def process_events(params):
 
     period = params['period']
@@ -261,8 +303,7 @@ def process_events(params):
     logging.info("Retrieving existing report or creating new one")
     report = Report.get_or_insert(
         report_id,
-        parent = period_key,
-        # url = ndb.Key('Period', period, 'Report', report_id).urlsafe(),
+        parent=period_key,
         created = datetime.today(),
         reported_period = period_key,
         reported_resource = dataset_key,
@@ -281,7 +322,9 @@ def process_events(params):
             query_dates = [],
             query_terms = [],
             # status = "in progress"
-        )
+        ),
+        stored = False,
+        issue_sent = False
     )
 
     # Populate event data
@@ -310,84 +353,122 @@ def process_events(params):
         p.processed_searches += 1
     elif t == 'download':
         p.processed_downloads += 1
+
+    # If all downloads and all searches are processed, wrap it up
     if p.processed_downloads == p.downloads_to_process and p.processed_searches == p.searches_to_process:
         p.status = 'done'
         logging.info("Reports for all datasets generated")
+
         if github is True:
-            # Send GitHub notifications serially
-            logging.info("Sending GitHub notifications")
+            # Launch GitHub stuff (store and notification)
+            logging.info("Launching GitHub processes")
             params = {
                 "period": period,
                 "testing": testing
             }
-            deferred.defer(send_all_to_github, params=params)
+            deferred.defer(send_all_to_github, params=params, _queue=QUEUENAME)
         else:
-            logging.info("Skipping GitHub notifications")
-    # else:
-        # p.status = 'failed'
-        # logging.warning("Processing period failed. Not all searches/downloads were processed")
+            logging.info("Skipping GitHub processes")
+
+    # Update period information
     p.put()
 
-    # # TODO: Build response
-    # # Building response
-    # resp = {
-    #     "key": str(report_key)
-    # }
-    # self.response.headers['content-type'] = 'application/json'
-    # self.response.write(json.dumps(resp))
+    # Building response
+    resp = {
+        "status": "success",
+        "message": "Resource successfully processed",
+        "source": "process_events",
+        "data": {
+            "period": period,
+            "type": t,
+            "resource": gbifdatasetid,
+            "report_key": report_key
 
+        }
+    }
+    logging.info(resp)
+    return
+
+
+########################################################################################################################
 
 def send_all_to_github(params):
 
     period = params['period']
     testing = params['testing']
 
+    # Retrieve keys of Reports for given period
     period_key = ndb.Key("Period", period)
-
     report_keys = Report.query(Report.reported_period == period_key).fetch(keys_only=True)
 
+    # Iterate over Report keys
     for report_key in report_keys:
-
-        send_to_github(report_key, period, testing)
-
-        time.sleep(2)
-
-
-def send_to_github(report_key, period, testing):
-
-        gbifdatasetid = report_key.id().split("|")[1]
-        logging.info("Sending issue for dataset {0}".format(gbifdatasetid))
-
-        # Build variables
-        dataset_key = ndb.Key("Dataset", gbifdatasetid)
-        dataset_entity = dataset_key.get()
-        period_key = ndb.Key("Period", period)
-        period_entity = period_key.get()
-        report_entity = report_key.get()
-
-        # GitHub stuff
-        org = dataset_entity.github_orgname
-        repo = dataset_entity.github_reponame
-        logging.info(org)
-        logging.info(repo)
-        key = apikey('ghb')
-        user_agent = 'VertNet'
-
-        # Testing block
-        if testing:
-            logging.info("Using testing repositories in jotegui")
-            org = 'jotegui'
-            repo = 'statReports'
-            user_agent = 'jotegui'
-            key = apikey('jot')
-
-        headers = {
-            'User-Agent': user_agent,
-            'Authorization': 'token {0}'.format(key),
-            "Accept": "application/vnd.github.v3+json"
+        params = {
+            "report_key": report_key,
+            "period": period,
+            "testing": testing
         }
+        logging.info("Launching GitHub track for Report {0}".format(report_key))
+        deferred.defer(send_to_github, params=params, _queue=QUEUENAME)
 
-        # Upload txt report to GitHub
+        time.sleep(2)  # Avoid abuse mechanisms
+
+    resp = {
+        "status": "success",
+        "message": "Successfully sent all GitHub-related tasks",
+        "source": "send_all_to_github",
+        "data": {
+            "period": period,
+            "testing": testing
+        }
+    }
+    logging.info(resp)
+    return
+
+
+########################################################################################################################
+
+def send_to_github(params):
+
+    report_key = params['report_key']
+    period = params['period']
+    testing = params['testing']
+
+    gbifdatasetid = report_key.id().split("|")[1]
+    logging.info("Storing report for dataset {0}".format(gbifdatasetid))
+
+    # Build variables
+    dataset_key = ndb.Key("Dataset", gbifdatasetid)
+    dataset_entity = dataset_key.get()
+    period_key = ndb.Key("Period", period)
+    period_entity = period_key.get()
+    report_entity = report_key.get()
+
+    # GitHub stuff
+    org = dataset_entity.github_orgname
+    repo = dataset_entity.github_reponame
+    logging.info(org)
+    logging.info(repo)
+    key = apikey('ghb')
+    user_agent = 'VertNet'
+
+    # Testing block
+    if testing:
+        logging.info("Using testing repositories in jotegui")
+        org = 'jotegui'
+        repo = 'statReports'
+        user_agent = 'jotegui'
+        key = apikey('jot')
+
+    # GitHub request headers
+    headers = {
+        'User-Agent': user_agent,
+        'Authorization': 'token {0}'.format(key),
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Upload txt report to GitHub, only if not previously stored
+    if report_entity.stored is False:
         template = JINJA_ENVIRONMENT.get_template('report.txt')
         content = template.render(
             dataset=dataset_entity,
@@ -410,15 +491,113 @@ def send_to_github(report_key, period, testing):
         )
         logging.info(r.status_code)
         if r.status_code == 201:
-            logging.info("Report successfully stored.")
+            logging.info("Report {0} successfully stored.".format(report_key))
+            report_entity.stored = True
+        elif r.status_code == 422:
+            logging.warning("Report {0} was already stored, but 'stored' property was stored as 'False'."
+                            " This call shouldn't have happened".format(report_key))
+            logging.error(r.content)
             report_entity.stored = True
         else:
             # TODO: Check why "stored" keeps being False even if report IS stored
-            logging.error("Report could not be stored.")
+            logging.error("Report {0} could not be stored.".format(report_key))
             logging.error(r.content)
-            report_entity.stored = False
+            resp = {
+                "status": "failed",
+                "message": "Got uncaught error code when uploading report to GitHub. Aborting issue creation.",
+                "source": "send_to_github",
+                "data": {
+                    "report_key": report_key,
+                    "period": period,
+                    "testing": testing,
+                    "error_code": r.status_code,
+                    "error_content": r.content
+                }
+            }
+            logging.error(resp)
+            return
+    else:
+        logging.warning("Report {0} was already stored."
+                        " This call shouldn't have happened".format(report_key))
 
-        # Issue creation
+    # Store updated version of Report entity
+    report_entity.put()
+
+    # Launch process to create issue
+    params = {
+        "report_key": report_key,
+        "period": period,
+        "testing": testing
+    }
+    deferred.defer(create_issue, params=params, _queue=QUEUENAME)
+
+    # Build response
+    resp = {
+        "status": "success",
+        "message": "Report successfully stored on GitHub repository",
+        "source": "send_to_github",
+        "data": {
+            "period": period,
+            "report_key": report_key,
+            "testing": testing
+        }
+    }
+    try:
+        resp['data']['gh_resp'] = r.status_code
+    except NameError:
+        resp['warning'] = "'send_to_github' called even if Report.stored was 'True'"
+
+    logging.info(resp)
+
+    # Prevent abuse trigger
+    time.sleep(2)
+
+    return
+
+
+########################################################################################################################
+
+def create_issue(params):
+
+    report_key = params['report_key']
+    period = params['period']
+    testing = params['testing']
+
+    gbifdatasetid = report_key.id().split("|")[1]
+    logging.info("Sending issue for dataset {0}".format(gbifdatasetid))
+
+    # Build variables
+    dataset_key = ndb.Key("Dataset", gbifdatasetid)
+    dataset_entity = dataset_key.get()
+    period_key = ndb.Key("Period", period)
+    period_entity = period_key.get()
+    report_entity = report_key.get()
+
+    # GitHub stuff
+    org = dataset_entity.github_orgname
+    repo = dataset_entity.github_reponame
+    logging.info(org)
+    logging.info(repo)
+    key = apikey('ghb')
+    user_agent = 'VertNet'
+
+    # Testing block
+    if testing:
+        logging.info("Using testing repositories in jotegui")
+        org = 'jotegui'
+        repo = 'statReports'
+        user_agent = 'jotegui'
+        key = apikey('jot')
+
+    # GitHub request headers
+    headers = {
+        'User-Agent': user_agent,
+        'Authorization': 'token {0}'.format(key),
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Issue creation, only if issue not previously created
+    if report_entity.issue_sent is False:
         link = "http://"+MODULE+"/reports/"+gbifdatasetid+"/"+period+"/"
         link_all = "http://"+MODULE+"/reports/"+gbifdatasetid+"/"
 
@@ -450,14 +629,36 @@ Thank you for being a part of VertNet.
         )
         logging.info(r.status_code)
         if r.status_code == 201:
-            logging.info("Issue successfully sent.")
+            logging.info("Issue for Report {0} successfully sent.".format(report_key))
             report_entity.issue_sent = True
         else:
-            logging.error("Issue could not be sent:")
+            logging.error("Issue for Report {0} could not be sent:".format(report_key))
             logging.error(r.content)
             report_entity.issue_sent = False
 
-        # Store "stored" and "issue_sent" properties
-        report_entity.put()
+    else:
+        logging.warning("Issue was already sent for Report {0}. "
+                        "This call shouldn't have happened".format(report_key))
 
-        return
+    # Store "issue_sent" property
+    report_entity.put()
+
+    # Build response
+    resp = {
+        "status": "success",
+        "message": "Issue successfully created",
+        "source": "create_issue",
+        "data": {
+            "period": period,
+            "testing": testing,
+            "report_key": report_key
+        }
+    }
+
+    try:
+        resp['data']['gh_resp'] = r.status_code
+    except NameError:
+        resp['warning'] = "'create_issue' called even if Report.issue_sent was 'True'"
+
+    logging.info(resp)
+    return
