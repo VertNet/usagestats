@@ -37,7 +37,12 @@ Ancestor: None
     records_searched_in_period = ndb.IntegerProperty()
     status = ndb.StringProperty(choices=['done', 'in progress', 'failed'])
 
-    period = ndb.ComputedProperty(lambda self: datetime.strptime("{0}-{1}".format(self.year, self.month), "%Y-%m"))
+    period = ndb.ComputedProperty(
+        lambda self: datetime.strptime(
+            "{0}-{1}".format(self.year, self.month),
+            "%Y-%m"
+        )
+    )
 
     downloads_to_process = ndb.IntegerProperty()
     searches_to_process = ndb.IntegerProperty()
@@ -144,4 +149,15 @@ Ancestor: Period
     done = ndb.ComputedProperty(lambda self:
                                 # self.downloads.status == 'done' and
                                 # self.searches.status == 'done' and
-                                self.issue_sent is True and self.stored is True)
+                                self.issue_sent is True and
+                                self.stored is True)
+
+
+class ReportToProcess(ndb.Model):
+    """Identifies a Report to be processed.
+This helper class is called by 'GetEvents' to temporarily store some basic data
+on all the reports that need to be processed.
+"""
+    t = ndb.StringProperty(required=True)
+    gbifdatasetid = ndb.StringProperty(required=True)
+    resource = ndb.JsonProperty(required=True)

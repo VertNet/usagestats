@@ -4,11 +4,17 @@ import json
 import logging
 import os
 from urllib import urlencode
+
 from google.appengine.api import urlfetch, memcache
+
+from config import *
 
 __author__ = 'jotegui'
 
-CDB_QUERY_TOO_LARGE_ERROR = 'Your query was not able to finish. Either you have too many queries running or the one you are trying to run is too expensive. Try again.'
+
+CDB_QUERY_TOO_LARGE_ERROR = 'Your query was not able to finish.' + \
+    ' Either you have too many queries running or the one you are trying' + \
+    ' to run is too expensive. Try again.'
 
 
 class ApiQueryMaxRetriesExceededError(Exception):
@@ -17,14 +23,17 @@ class ApiQueryMaxRetriesExceededError(Exception):
 
 def apikey(serv):
     """Return credentials file as a JSON object."""
-    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '{0}.key'.format(serv))
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                        '{0}.key'.format(serv))
     key = open(path, "r").read().rstrip()
-    # logging.info("KEY %s" % key)
     return key
 
 
-def add_time_limit(query, today = datetime.today(), lapse = 'month'):
-    """Add time limit to CartoDB query. Default behavior is to extract stats from just the last month"""
+def add_time_limit(query, today=datetime.today(), lapse='month'):
+    """Add time limit to CartoDB query.
+
+Default behavior is to extract stats from just the last month.
+"""
 
     if lapse == 'month':
         this_year = today.year
@@ -35,15 +44,18 @@ def add_time_limit(query, today = datetime.today(), lapse = 'month'):
         else:
             limit_year = this_year
             limit_month = this_month - 1
-        limit_string = " and extract(year from created_at)={0}".format(limit_year)
-        limit_string += " and extract(month from created_at)={0}".format(limit_month)
+        limit_string = " and extract(year from created_at)=%s" % limit_year
+        limit_string += " and extract(month from created_at)=%s" % limit_month
         query += limit_string
 
     return query
 
 
 def api_query(api_url, params):
-    """Launch query to an API with the specified query and retrieve the specified field."""
+    """Launch query to an API.
+
+Send the specified query and retrieve the specified field.
+"""
     urlfetch.set_default_fetch_deadline(60)
     finished = False
     max_retries = 3
@@ -51,9 +63,14 @@ def api_query(api_url, params):
     while not finished:
         retries += 1
         if retries >= max_retries:
-            logging.error("ERROR: Query failed after maximum retries")
-            raise ApiQueryMaxRetriesExceededError("Query failed after maximum retries")
-        d = urlfetch.fetch(url = api_url, method = urlfetch.POST, payload = urlencode(params)).content
+            err_msg = "Query failed after maximum retries"
+            logging.error(err_msg)
+            raise ApiQueryMaxRetriesExceededError(err_msg)
+        d = urlfetch.fetch(
+            url=api_url,
+            method=urlfetch.POST,
+            payload=urlencode(params)
+        ).content
         d = json.loads(d)
         if "error" in d.keys():
             logging.warning("Warning, something went wrong with the query.")
@@ -61,21 +78,19 @@ def api_query(api_url, params):
             logging.warning("This is the call that caused it:")
             logging.warning(api_url)
             logging.warning(urlencode(params))
-            logging.warning("Retrying in 3 seconds, attempt %d of %d" % (retries+1, max_retries))
+            logging.warning("Retrying in 3 seconds"
+                            " attempt %d of %d" % (retries+1, max_retries))
             time.sleep(3)
         else:
             finished = True
             logging.info("Got response from %s" % api_url)
-            # logging.info(urlencode(params))
-            # logging.info(sample)
-            # logging.info(d.keys())
             return d
 
 
 def cartodb_query(query):
     """Build parameters for launching a query to the CartoDB API."""
-    params = {'q': query, 'api_key': apikey(serv = "cdb")}
-    d = api_query(api_url = cdb_url, params = params)['rows']
+    params = {'q': query, 'api_key': apikey(serv="cdb")}
+    d = api_query(api_url=CDB_URL, params=params)['rows']
     logging.info("Returned %d rows" % len(d))
     return d
 
@@ -106,21 +121,14 @@ def geonames_query(lat, lon):
             'style': 'full'
         }
         try:
-            d = api_query(api_url = gnm_url, params = params)['countryName']
+            d = api_query(api_url=GNM_URL, params=params)['countryName']
         except KeyError:
             d = "Unknown"
         memcache.add(k, d)
         return d
 
 
-# CartoDB params
-cdb_url = "https://vertnet.cartodb.com/api/v2/sql"
-
-# GeoNames params
-gnm_url = "http://api.geonames.org/countryCodeJSON"
-
 # GitHub params
-ghb_url = 'https://api.github.com'
 ghb_headers = {
     "Accept": "application/vnd.github.v3+json",
     "User-Agent": "jotegui",

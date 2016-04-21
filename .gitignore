@@ -3,6 +3,7 @@
 
 # IDE
 .idea
+*sublime*
 
 # data files
 data/
@@ -12,3 +13,6 @@ lib/
 
 # Compiled files
 *.pyc
+
+# Old stuff
+old/

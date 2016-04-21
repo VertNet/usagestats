@@ -1,66 +1,64 @@
-#!/usr/bin/env python
-#
-# Copyright 2007 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+# TODO: Check 'todo' item in ReportViewer:
+#    Update template fields to fit new model schema (e.g. search_events)
+# TODO: Check, refactor and improve *Status
+# TODO: Build EntityCleaner
 
-from datasets import DatasetsSetupHandler
+from admin.parser.InitExtraction import InitExtraction
+from admin.parser.GetEvents import GetEvents
+from admin.parser.ProcessEvents import ProcessEvents
+from admin.parser.GitHubStore import GitHubStore
+from admin.parser.GitHubIssue import GitHubIssue
 
-from reports_viewer import *
+from admin.setup.DatasetsSetup import DatasetsSetup
 
-from report_generator import *
-from report_tasks import *
+from admin.tools.Status import Status
+from admin.tools.PeriodStatus import PeriodStatus
+from admin.tools.RepoChecker import RepoChecker
+from admin.tools.EmailTester import EmailTester
+from admin.tools.EntityCleaner import EntityCleaner
 
-from dev import *
+# from viewer.reports_viewer import *
+from viewer.DatasetViewer import DatasetViewer
+from viewer.ReportViewer import ReportViewer, TXTReportViewer, JSONReportViewer
+
+import webapp2
 
 __author__ = 'jotegui'
 
 
-# class MainHandler(webapp2.RequestHandler):
-#     def get(self):
-#         self.redirect("/periods")
-
-
+# Administrative processes
 admin = webapp2.WSGIApplication([
 
-    # Generator tasks
-    webapp2.Route(r'/parser/nogithub/<period>', handler=ProcessPeriodNoGithub),
-    webapp2.Route(r'/parser/testinggithub/<period>', handler=ProcessPeriodTestingGithub),
-    webapp2.Route(r'/parser/reports/<sha>/', handler=StoreReportHandler),
-    webapp2.Route(r'/parser/<period>', handler=ProcessPeriod),
+    # Report generator
+    ('/admin/parser/init', InitExtraction),
+    ('/admin/parser/get_events', GetEvents),
+    ('/admin/parser/process_events', ProcessEvents),
+    ('/admin/parser/github_store', GitHubStore),
+    ('/admin/parser/github_issue', GitHubIssue),
+
+    # Accessory tools
+    ('/admin/setup/datasets', DatasetsSetup),
+    ('/admin/status', Status),
+    webapp2.Route(r'/admin/status/period/<period>',
+                  handler=PeriodStatus),
+    ('/admin/tools/repo_checker', RepoChecker),
+    ('/admin/tools/email_tester', EmailTester),
+    ('/admin/tools/entity_cleaner', EntityCleaner),
 
 ], debug=True)
 
 
+# Public processes
 app = webapp2.WSGIApplication([
 
-    # Main handler
-    # webapp2.Route('/', handler=MainHandler),
-
-    # Setup routes
-    webapp2.Route('/setup_datasets', handler=DatasetsSetupHandler, name='setup_datasets'),
-
     # Report viewer routes
-    # webapp2.Route('/reports', handler=ReportListHandler),
-    webapp2.Route(r'/reports/<gbifdatasetid>/', handler=DatasetHandler, name='dataset'),
-    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/', handler=ReportHandler, name='report'),
-    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/json', handler=JSONReportHandler, name='report_json'),
-    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/txt', handler=TXTReportHandler, name='report_txt'),
-
-    # Report generator status routes
-    webapp2.Route('/periods', handler=PeriodListHandler),
-    webapp2.Route('/status', handler=StatusHandler),
-    webapp2.Route(r'/status/period/<period>', handler=PeriodStatusHandler),
+    webapp2.Route(r'/reports/<gbifdatasetid>/',
+                  handler=DatasetViewer),
+    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/',
+                  handler=ReportViewer),
+    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/json',
+                  handler=JSONReportViewer),
+    webapp2.Route(r'/reports/<gbifdatasetid>/<period>/txt',
+                  handler=TXTReportViewer),
 
 ], debug=True)

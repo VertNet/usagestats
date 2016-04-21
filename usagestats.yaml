@@ -12,17 +12,14 @@ api_version: 1
 threadsafe: yes
 
 handlers:
-#- url: /favicon\.ico
-#  static_files: favicon.ico
-#  upload: favicon\.ico
 
-- url: /_ah/queue/deferred
-  script: google.appengine.ext.deferred.deferred.application
-  login: admin
+# - url: /_ah/queue/deferred
+#   script: google.appengine.ext.deferred.deferred.application
+#   login: admin
 
-- url: /parser/.*
+- url: /admin/.*
   script: usagestats.admin
-  login: admin
+  # login: admin
 
 - url: .*
   script: usagestats.app
@@ -33,5 +30,5 @@ libraries:
 - name: jinja2
   version: latest
 
-builtins:
-- deferred: on
+# builtins:
+# - deferred: on
