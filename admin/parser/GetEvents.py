@@ -20,10 +20,10 @@ class GetEvents(webapp2.RequestHandler):
 
         # Retrieve parameters from memcache and request
         params = memcache.get_multi([
-                "period",
-                "searches_extracted",
-                "downloads_extracted"
-            ], key_prefix="usagestats_parser_")
+            "period",
+            "searches_extracted",
+            "downloads_extracted"
+        ], key_prefix="usagestats_parser_")
 
         # Get Period from request if not in memcache
         try:
@@ -92,7 +92,7 @@ class GetEvents(webapp2.RequestHandler):
                     "to_process": len(sr)
                 }
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return
 
         # Build response
@@ -106,7 +106,7 @@ class GetEvents(webapp2.RequestHandler):
                 "resources_to_process": len(self.resources)
             }
         }
-        self.response.write(json.dumps(resp)+"\n")
+        self.response.write(json.dumps(resp) + "\n")
 
         # Update memcache
         if self.t == "search":
@@ -160,6 +160,7 @@ class GetEvents(webapp2.RequestHandler):
         query = add_time_limit(query=query, today=queried_date)
 
         logging.info("Executing query")
+        logging.info(query)
         try:
             data = cartodb_query(query)
         except ApiQueryMaxRetriesExceededError:
@@ -172,7 +173,7 @@ class GetEvents(webapp2.RequestHandler):
                     "event_type": self.t
                 }
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Store 'data' in class property
@@ -284,7 +285,7 @@ redistribute records into resources."""
                     "event_type": self.t
                 }
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return 1
         else:
             logging.info("Period counts for %s events updated" % self.t)

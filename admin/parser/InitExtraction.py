@@ -39,7 +39,7 @@ and launch searches and downloads extractions."""
                 "period": self.period
             }
         }
-        self.response.write(json.dumps(resp)+"\n")
+        self.response.write(json.dumps(resp) + "\n")
 
         return
 
@@ -54,18 +54,18 @@ and launch searches and downloads extractions."""
 
         # Store in memcache for further reference
         missed = memcache.set_multi({
-                # Extraction variables
-                "period": self.period,
-                "force": self.force,
-                "testing": self.testing,
-                "github_store": self.github_store,
-                "github_issue": self.github_issue,
-                # Process tracking variables
-                "searches_extracted": False,
-                "downloads_extracted": False,
-                "processed_searches": 0,
-                "processed_downloads": 0
-            }, key_prefix="usagestats_parser_")
+            # Extraction variables
+            "period": self.period,
+            "force": self.force,
+            "testing": self.testing,
+            "github_store": self.github_store,
+            "github_issue": self.github_issue,
+            # Process tracking variables
+            "searches_extracted": False,
+            "downloads_extracted": False,
+            "processed_searches": 0,
+            "processed_downloads": 0
+        }, key_prefix="usagestats_parser_")
 
         if len(missed) > 0:
             logging.warning("Some call parameters were not added " +
@@ -89,7 +89,7 @@ and create a new Period."""
                 "message": "Period not found on POST body. " +
                            "Aborting."
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Check that 'period' is valid
@@ -99,7 +99,7 @@ and create a new Period."""
                 "status": "error",
                 "message": "Malformed period. Should be YYYYMM (e.g., 201603)"
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Get existing period
@@ -116,7 +116,7 @@ and create a new Period."""
                     "message": "Period %s already exists. " % self.period +
                                "Aborting. To override, use 'force=true'."
                 }
-                self.response.write(json.dumps(resp)+"\n")
+                self.response.write(json.dumps(resp) + "\n")
                 return 1
             else:
                 logging.warning("Period %s already exists. " % self.period +
@@ -153,12 +153,13 @@ and create a new Period."""
                 "status": "error",
                 "message": "Could not create new Period %s" % self.period
             }
-            self.response.write(json.dumps(resp)+"\n")
+            self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Clear temporary entities
         keys_to_delete = ReportToProcess.query().fetch(keys_only=True)
-        logging.info("Deleting %d entities" % len(keys_to_delete))
+        logging.info("Deleting %d temporal (internal use only) entities"
+                     % len(keys_to_delete))
         ndb.delete_multi(keys_to_delete)
 
         return 0

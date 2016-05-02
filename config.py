@@ -20,7 +20,7 @@ GH_COMMITTER = {
 }
 
 # URIs, relative to app root
-URI_BASE = "/parser/dev/"
+URI_BASE = "/admin/parser/"
 URI_INIT = URI_BASE + "init"
 URI_GET_EVENTS = URI_BASE + "get_events"
 URI_PROCESS_EVENTS = URI_BASE + "process_events"

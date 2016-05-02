@@ -1,8 +1,3 @@
-# TODO: Check 'todo' item in ReportViewer:
-#    Update template fields to fit new model schema (e.g. search_events)
-# TODO: Check, refactor and improve *Status
-# TODO: Build EntityCleaner
-
 from admin.parser.InitExtraction import InitExtraction
 from admin.parser.GetEvents import GetEvents
 from admin.parser.ProcessEvents import ProcessEvents

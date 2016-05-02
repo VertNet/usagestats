@@ -1,10 +1,17 @@
 # DEPLOYMENT INFO
-#
+# Last deployed version: dev
+# Last deployed moment: May 2 2016
 # command: gcloud preview app deploy usagestats.yaml
 # args:
-#   -- project vertnet-portal  # Optional, no need if gcloud is configured to use this project
-#   -- version prod|dev  # Indicates version to use. If 'Prod', --promote flag should be used
-#   -- promote  # Optional, removes the version id from the deployment URL. Skip for testing
+#   --project vertnet-portal  # Optional, no need if gcloud is configured to use this project
+#   --version prod|dev  # Indicates version to use. If 'Prod', --promote flag should be used
+#   --promote  # Optional, removes the version id from the deployment URL. Skip for testing and/or dev version
+#
+# TODO
+#   * Check 'todo' item in ReportViewer:
+#        Update template fields to fit new model schema (e.g. search_events)
+#   * Check, refactor and improve *Status
+#   * Build EntityCleaner
 
 module: tools-usagestats
 runtime: python27
