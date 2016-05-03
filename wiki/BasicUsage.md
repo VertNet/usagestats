@@ -3,7 +3,9 @@ Basic Usage
 
 <!-- MarkdownTOC -->
 
-1. [Manual calculation of stats for a month \(via `cURL`\)](#manual-calculation-of-stats-for-a-month-via-curl)
+1. [Dataset information setup](#dataset-information-setup)
+    1. [Example:](#example)
+2. [Manual calculation of stats for a month](#manual-calculation-of-stats-for-a-month)
     1. [Examples for April 2016 usage](#examples-for-april-2016-usage)
         1. [Default usage: No override, no testing, no GitHub process](#default-usage-no-override-no-testing-no-github-process)
         2. [Overriding an existing period](#overriding-an-existing-period)
@@ -12,8 +14,28 @@ Basic Usage
 
 <!-- /MarkdownTOC -->
 
-<a name="manual-calculation-of-stats-for-a-month-via-curl"></a>
-## Manual calculation of stats for a month (via `cURL`)
+<a name="dataset-information-setup"></a>
+## Dataset information setup
+
+Needed to ensure consistency and proper functioning. The process of extracting the reports relies on having information of all datasets already in the datastore.
+
+Base URL: `http://<version>.tools-usagestats.vertnet-portal.appspot.com/admin/setup/`
+
+Command: `datasets`
+
+Method: `POST`
+
+Parameters (**bold** means mandatory): None
+
+<a name="example"></a>
+### Example:
+
+```sh
+curl -i -X POST -d "" http://tools-usagestats.vertnet-portal.appspot.com/admin/setup/datasets
+```
+
+<a name="manual-calculation-of-stats-for-a-month"></a>
+## Manual calculation of stats for a month
 
 Base URL: `http://<version>.tools-usagestats.vertnet-portal.appspot.com/admin/parser/`
 
