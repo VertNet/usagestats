@@ -46,11 +46,12 @@ and launch searches and downloads extractions."""
     def store_parameters(self):
         """Store and memcache arguments in POST request body."""
         # Store call parameters
-        self.period = self.request.get('period')
+        self.period = self.request.get('period', None)
         self.force = self.request.get('force').lower() == 'true'
         self.testing = self.request.get('testing').lower() == 'true'
         self.github_store = self.request.get('github_store').lower() == 'true'
         self.github_issue = self.request.get('github_issue').lower() == 'true'
+        self.table_name = self.request.get('table_name', CDB_TABLE)
 
         # Store in memcache for further reference
         missed = memcache.set_multi({
@@ -60,6 +61,7 @@ and launch searches and downloads extractions."""
             "testing": self.testing,
             "github_store": self.github_store,
             "github_issue": self.github_issue,
+            "table_name": self.table_name,
             # Process tracking variables
             "searches_extracted": False,
             "downloads_extracted": False,

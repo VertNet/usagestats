@@ -21,17 +21,21 @@ class GetEvents(webapp2.RequestHandler):
         # Retrieve parameters from memcache and request
         params = memcache.get_multi([
             "period",
+            "table_name",
             "searches_extracted",
             "downloads_extracted"
         ], key_prefix="usagestats_parser_")
 
-        # Get Period from request if not in memcache
+        # If GetEvents is called directly, no 'period' will be found
+        # Then, get Period from request
         try:
             self.period = params['period']
         except KeyError:
             logging.info("Trying to extract 'period' from request")
             self.period = self.request.get("period")
 
+        self.table_name = params['table_name']
+        logging.info("Using %s as data table" % self.table_name)
         self.downloads_extracted = params['downloads_extracted']
         self.searches_extracted = params['searches_extracted']
 
@@ -138,26 +142,32 @@ class GetEvents(webapp2.RequestHandler):
             query = "SELECT cartodb_id, lat, lon, created_at, " \
                     "query AS query_terms, response_records, " \
                     "results_by_resource " \
-                    "FROM query_log_master " \
+                    "FROM %s " \
                     "WHERE type='download' "\
                     "AND download IS NOT NULL " \
-                    "AND download !=''"
+                    "AND download !=''" % self.table_name
         else:
             query = "SELECT cartodb_id, lat, lon, created_at, " \
                     "query AS query_terms, response_records, " \
                     "results_by_resource " \
-                    "FROM query_log_master " \
+                    "FROM %s " \
                     "WHERE left(type, 5)='query' " \
                     "AND results_by_resource IS NOT NULL " \
                     "AND results_by_resource != '{}' " \
-                    "AND results_by_resource !=''"
+                    "AND results_by_resource !=''" % self.table_name
 
         # Just production portal downloads
         query += " and client='portal-prod'"
-        queried_date = datetime(int(self.period[:4]), int(self.period[-2:]), 1)
-        queried_date += timedelta(days=32)
-        # Just from the specific month
-        query = add_time_limit(query=query, today=queried_date)
+
+        # Only restrict time if using default table
+        if self.table_name == CDB_TABLE:
+            queried_date = datetime(
+                int(self.period[:4]),
+                int(self.period[-2:]),
+                1
+            )
+            queried_date += timedelta(days=32)
+            query = add_time_limit(query=query, today=queried_date)
 
         logging.info("Executing query")
         logging.info(query)

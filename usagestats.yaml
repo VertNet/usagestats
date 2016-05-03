@@ -1,6 +1,6 @@
 # DEPLOYMENT INFO
-# Last deployed version: dev
-# Last deployed moment: May 2 2016
+# Last deployed dev version: May 3 2016
+# Last deployed prod version: ?
 # command: gcloud preview app deploy usagestats.yaml
 # args:
 #   --project vertnet-portal  # Optional, no need if gcloud is configured to use this project

@@ -7,6 +7,7 @@ MODULE = modules.get_hostname(module=MODULE_NAME).replace("prod.", "")
 
 # CartoDB
 CDB_URL = "https://vertnet.cartodb.com/api/v2/sql"
+CDB_TABLE = "query_log_master"
 
 # Geonames
 GNM_URL = "http://api.geonames.org/countryCodeJSON"
