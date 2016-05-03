@@ -33,7 +33,7 @@ class GitHubStore(webapp2.RequestHandler):
             self.period = params['period']
         # If not in memcache (i.e., if called directly), get from request
         except KeyError:
-            self.period = self.request.get("period")
+            self.period = self.request.get("period", None)
 
         # If still not there, halt
         if not self.period:
