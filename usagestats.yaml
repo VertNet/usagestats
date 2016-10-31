@@ -1,13 +1,13 @@
 # CODEBASE INFO
-# Last pushed to master branch: May 3 2016
-# Last change to master branch: Added support for different table names
+# Last pushed to master branch: 2016-10-31
+# Last change to master branch: Patch to avoid too long query values
 # Last pushed to dev branch: ?
-# Last change to master branch: ?
+# Last change to dev branch: ?
 #
 # DEPLOYMENT INFO
-# Last deployed dev version: May 3 2016
+# Last deployed dev version: 2016-10-31
 # Last deployed prod version: ?
-# command: gcloud preview app deploy usagestats.yaml
+# command: gcloud app deploy usagestats.yaml
 # args:
 #   --project vertnet-portal  # Optional, no need if gcloud is configured to use this project
 #   --version prod|dev  # Indicates version to use. If 'Prod', --promote flag should be used
@@ -19,7 +19,7 @@
 #   * Check, refactor and improve *Status
 #   * Build EntityCleaner
 
-module: tools-usagestats
+service: tools-usagestats
 runtime: python27
 api_version: 1
 threadsafe: yes

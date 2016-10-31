@@ -1,1 +1,1 @@
-gcloud preview app deploy --version prod --promote usagestats.yaml
+gcloud app deploy --version prod --promote usagestats.yaml
