@@ -139,19 +139,23 @@ class GetEvents(webapp2.RequestHandler):
         # Extract CartoDB data, base query
         logging.info("Building %s query" % self.t)
         if self.t == 'download':
+            # Line #6 of SQL is to avoid too large queries
             query = "SELECT cartodb_id, lat, lon, created_at, " \
                     "query AS query_terms, response_records, " \
                     "results_by_resource " \
                     "FROM %s " \
                     "WHERE type='download' "\
+                    "AND octet_length(query)<=1500 " \
                     "AND download IS NOT NULL " \
                     "AND download !=''" % self.table_name
         else:
+            # Line #6 of SQL is to avoid too large queries
             query = "SELECT cartodb_id, lat, lon, created_at, " \
                     "query AS query_terms, response_records, " \
                     "results_by_resource " \
                     "FROM %s " \
                     "WHERE left(type, 5)='query' " \
+                    "AND octet_length(query)<=1500 " \
                     "AND results_by_resource IS NOT NULL " \
                     "AND results_by_resource != '{}' " \
                     "AND results_by_resource !=''" % self.table_name
