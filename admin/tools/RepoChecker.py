@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "RepoChecker.py 2018-10-09T14:23-03:00"
-
+__version__ = "RepoChecker.py 2018-10-09T15:40-03:00"
 REPOCHECKER_VERSION=__version__
 
 import json
@@ -20,7 +19,7 @@ from google.appengine.api import urlfetch, mail
 import webapp2
 
 from config import *
-from util import apikey, cartodb_query
+from util import apikey, carto_query
 
 class RepoChecker(webapp2.RequestHandler):
     def post(self):
@@ -30,7 +29,7 @@ class RepoChecker(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'application/json'
 
         s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
-        s += '\nChecking consistency of repository names between CartoDB and GitHub.'
+        s += '\nChecking consistency of repository names between Carto and GitHub.'
         logging.info(s)
 
         self.failed_repos = []
@@ -79,7 +78,7 @@ Thank you!
         return
 
     def check_failed_repos(self):
-        """Check repository name consistency between CartoDB and GitHub."""
+        """Check repository name consistency between Carto and GitHub."""
 
         all_repos = self.get_all_repos()
         repos = {}
@@ -118,14 +117,14 @@ Thank you!
         return
 
     def get_all_repos(self):
-        """Extract a list of all orgnames and reponames from CartoDB."""
+        """Extract a list of all orgnames and reponames from Carto."""
         query = "select github_orgname, github_reponame\
                  from resource_staging\
                  where ipt is true and networks like '%VertNet%';"
 
-        all_repos = cartodb_query(query)
+        all_repos = carto_query(query)
         s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
-        s += '\nGot {0} repos currently in CartoDB'.format(len(all_repos))
+        s += '\nGot {0} repos currently in Carto'.format(len(all_repos))
         logging.info(s)
 
         result = []

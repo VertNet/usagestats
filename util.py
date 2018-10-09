@@ -1,25 +1,32 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "util.py 2018-10-09T15:35-03:00"
+UTIL_VERSION=__version__
+
 from datetime import datetime
 import time
 import json
 import logging
 import os
 from urllib import urlencode
-
 from google.appengine.api import urlfetch, memcache
-
 from config import *
-
-__author__ = 'jotegui'
-
 
 CDB_QUERY_TOO_LARGE_ERROR = 'Your query was not able to finish.' + \
     ' Either you have too many queries running or the one you are trying' + \
     ' to run is too expensive. Try again.'
 
-
 class ApiQueryMaxRetriesExceededError(Exception):
     pass
-
 
 def apikey(serv):
     """Return credentials file as a JSON object."""
@@ -28,13 +35,11 @@ def apikey(serv):
     key = open(path, "r").read().rstrip()
     return key
 
-
 def add_time_limit(query, today=datetime.today(), lapse='month'):
-    """Add time limit to CartoDB query.
+    """Add time limit to Carto query.
 
 Default behavior is to extract stats from just the last month.
 """
-
     if lapse == 'month':
         this_year = today.year
         this_month = today.month
@@ -49,7 +54,6 @@ Default behavior is to extract stats from just the last month.
         query += limit_string
 
     return query
-
 
 def api_query(api_url, params):
     """Launch query to an API.
@@ -86,14 +90,12 @@ Send the specified query and retrieve the specified field.
             logging.info("Got response from %s" % api_url)
             return d
 
-
-def cartodb_query(query):
-    """Build parameters for launching a query to the CartoDB API."""
+def carto_query(query):
+    """Build parameters for launching a query to the Carto API."""
     params = {'q': query, 'api_key': apikey(serv="cdb")}
     d = api_query(api_url=CDB_URL, params=params)['rows']
     logging.info("Returned %d rows" % len(d))
     return d
-
 
 def geonames_query(lat, lon):
     """Build parameters for launching a query to the GeoNames API."""
@@ -126,7 +128,6 @@ def geonames_query(lat, lon):
             d = "Unknown"
         memcache.add(k, d)
         return d
-
 
 # GitHub params
 ghb_headers = {

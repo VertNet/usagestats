@@ -1,18 +1,27 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "GetEvents.py 2018-10-09T15:40-03:00"
+GETEVENTS_VERSION=__version__
+
 import json
 import logging
 from datetime import datetime, timedelta
-
 from google.appengine.ext import ndb
 from google.appengine.api import memcache, taskqueue
 import webapp2
-
 from models import ReportToProcess
 from util import ApiQueryMaxRetriesExceededError
-from util import add_time_limit, cartodb_query, geonames_query
+from util import add_time_limit, carto_query, geonames_query
 from config import *
-
-__author__ = "jotegui"
-
 
 class GetEvents(webapp2.RequestHandler):
     """Download and prepare log events from logging tables."""
@@ -136,7 +145,7 @@ class GetEvents(webapp2.RequestHandler):
     def get_events(self):
         """Build query and extract records."""
 
-        # Extract CartoDB data, base query
+        # Extract Carto data, base query
         logging.info("Building %s query" % self.t)
         if self.t == 'download':
             # Line #6 of SQL is to avoid too large queries
@@ -176,12 +185,12 @@ class GetEvents(webapp2.RequestHandler):
         logging.info("Executing query")
         logging.info(query)
         try:
-            data = cartodb_query(query)
+            data = carto_query(query)
         except ApiQueryMaxRetriesExceededError:
             self.error(504)
             resp = {
                 "status": "error",
-                "message": "Could not retrieve data from CartoDB",
+                "message": "Could not retrieve data from Carto",
                 "data": {
                     "period": self.period,
                     "event_type": self.t

@@ -1,8 +1,19 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "models.py 2018-10-09T15:44-03:00"
+MODELS_VERSION=__version__
+
 from datetime import datetime
 from google.appengine.ext import ndb
-
-__author__ = 'jotegui'
-
 
 class Dataset(ndb.Model):
     """Identifies a Dataset.
@@ -50,20 +61,17 @@ Ancestor: None
     processed_searches = ndb.IntegerProperty(default=0)
 
 
-class CartodbEntry(ndb.Expando):
-    """Identifies an entry of the query_log_master table in CartoDB.
+class CartoEntry(ndb.Expando):
+    """Identifies an entry of the query_log_master table in Carto.
 Key: cartodb_id
 """
     pass
 
-
-class CartodbDownloadEntry(CartodbEntry):
+class CartoDownloadEntry(CartoEntry):
     pass
 
-
-class CartodbSearchEntry(CartodbEntry):
+class CartoSearchEntry(CartoEntry):
     pass
-
 
 class QueryTerms(ndb.Model):
     """

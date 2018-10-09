@@ -1,18 +1,24 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "PeriodStatus.py 2018-10-09T15:53-03:00"
+PERIODSTATUS_VERSION=__version__
+
 import json
-# import logging
-# from datetime import timedelta
 from google.appengine.api.modules import modules
 from google.appengine.ext import ndb
 import jinja2
-
-from models import Period, Dataset, Report, CartodbDownloadEntry
+from models import Period, Dataset, Report, CartoDownloadEntry
 from util import *
-
-# from google.appengine.api import urlfetch
-
 import webapp2
-
-__author__ = 'jotegui'
 
 _HOSTNAME = modules.get_hostname(module="tools-usagestats")
 JINJA_ENVIRONMENT = jinja2.Environment(
@@ -20,7 +26,6 @@ JINJA_ENVIRONMENT = jinja2.Environment(
                                    'templates')),
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
-
 
 class PeriodStatus(webapp2.RequestHandler):
     def get(self, period):
@@ -31,7 +36,7 @@ class PeriodStatus(webapp2.RequestHandler):
             status = entity.status
         else:
             status = "not done"
-        getdownloadslist = CartodbDownloadEntry.query(ancestor=period_key).count() > 0
+        getdownloadslist = CartoDownloadEntry.query(ancestor=period_key).count() > 0
 
         resp = {
             "Requested period": period,

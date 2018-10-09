@@ -1,23 +1,31 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "GitHubStore.py 2018-10-09T16:58-03:00"
+GitHubStore_VERSION=__version__
+
 import time
 import base64
 import json
 import logging
-
 from google.appengine.api import memcache, taskqueue, urlfetch, mail
 from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 import webapp2
-
 from models import Report
-
 from config import *
 from jinjafilters import JINJA_ENVIRONMENT
 from util import apikey
 
-__author__ = "jotegui"
-
 PAGE_SIZE = 1
-
 
 class GitHubStore(webapp2.RequestHandler):
     """Store each report in its corresponding GitHub repository."""
@@ -221,11 +229,16 @@ Congrats!
 
         # Testing block
         if self.testing:
-            logging.info("Using testing repositories in jotegui")
-            org = 'jotegui'
+            logging.info("Using testing repositories in VertNet GitHub org")
+            org = 'VertNet'
             repo = 'statReports'
-            user_agent = 'jotegui'
-            key = apikey('jot')
+            user_agent = 'VertNet'
+            key = apikey('ghb')
+#             logging.info("Using testing repositories in jotegui")
+#             org = 'jotegui'
+#             repo = 'statReports'
+#             user_agent = 'jotegui'
+#             key = apikey('jot')
 
         # GitHub request headers
         headers = {

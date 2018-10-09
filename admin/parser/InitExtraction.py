@@ -1,15 +1,24 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "InitExtraction.py 2018-10-09T16:04-03:00"
+INITEXTRACTION_VERSION=__version__
+
 import json
 import logging
-
 from google.appengine.ext import ndb
 from google.appengine.api import memcache, taskqueue
 import webapp2
-
 from models import Period, ReportToProcess, Report
 from config import *
-
-__author__ = "jotegui"
-
 
 class InitExtraction(webapp2.RequestHandler):
     """Initialize the processing of a Period."""

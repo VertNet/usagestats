@@ -1,23 +1,31 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "ProcessEvents.py 2018-10-09T15:54-03:00"
+PROCESSEVENTS_VERSION=__version__
+
 import json
 import logging
 from datetime import datetime
-
 from google.appengine.api import memcache, mail, taskqueue
 from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 from google.appengine.datastore.datastore_query import Cursor
 import webapp2
-
 from models import ReportToProcess
 from models import QueryCountry, QueryDate, QueryTerms
 from models import Report, Search, Download
-
 from config import *
 
-__author__ = "jotegui"
-
 PAGE_SIZE = 10
-
 
 class ProcessEvents(webapp2.RequestHandler):
     """Process a single resource and create a Report entity."""

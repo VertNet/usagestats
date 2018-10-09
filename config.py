@@ -17,7 +17,8 @@
 __author__ = "Javier Otegui"
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "config.py 2018-08-16T23:24-03:00"
+__version__ = "config.py 2018-10-09T16:02-03:00"
+CONFIG_VERSION=__version__
 
 from google.appengine.api import modules
 
@@ -26,8 +27,8 @@ MODULE = modules.get_hostname(module=MODULE_NAME).replace("prod.", "")
 
 # External API URLs and configs
 
-# CartoDB
-CDB_URL = "https://vertnet.cartodb.com/api/v2/sql"
+# Carto
+CDB_URL = "https://vertnet.carto.com/api/v2/sql"
 CDB_TABLE = "query_log_master"
 
 # Geonames

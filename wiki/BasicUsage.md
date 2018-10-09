@@ -85,8 +85,8 @@ Method: `POST`
 Parameters (**bold** means mandatory):
 
 - **`period`**: YYYYMM of the period to process (*i.e.*, the month we want to calculate usage stats). For example, 201603 for March 2016 usage stats
-- `force`: true/false, wheter or not it should override existing data for the given period. Defaults to False
-- `testing`: true/false, whether or not use the `jotegui/statReports` testing repository instead of actual publishers' ones to store reports and send issues. Defaults to False
+- `force`: true/false, whether or not it should override existing data for the given period. Defaults to False
+- `testing`: true/false, whether or not use the `VertNet/statReports` testing repository instead of actual publishers' ones to store reports and send issues. Defaults to False
 - `github_store`: true/false, whether or not store a txt version of the reports on the publishers' (or the testing) GitHub repositories. Defaults to False
 - `github_issue`: true/false, whether or not create a new issue to notify of the report on the publishers' (or the testing) GitHub repositories. Defaults to False
 - `table_name`: Name of the CartoDB table to query in order to extract usage data. Defaults to `query_log_master`. *Note*: time-constraints will **not** be applied if a table name is provided here (unless it's the same as the default value). Therefore, the table with the given name **must exist and must have all and nothing but the needed records**.

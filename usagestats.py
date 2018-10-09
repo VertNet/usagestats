@@ -1,25 +1,31 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "usagestats.py 2018-10-09T15:58-03:00"
+USAGESTATS_VERSION=__version__
+
 from admin.parser.InitExtraction import InitExtraction
 from admin.parser.GetEvents import GetEvents
 from admin.parser.ProcessEvents import ProcessEvents
 from admin.parser.GitHubStore import GitHubStore
 from admin.parser.GitHubIssue import GitHubIssue
-
 from admin.setup.DatasetsSetup import DatasetsSetup
-
 from admin.tools.Status import Status
 from admin.tools.PeriodStatus import PeriodStatus
 from admin.tools.RepoChecker import RepoChecker
 from admin.tools.EmailTester import EmailTester
 from admin.tools.EntityCleaner import EntityCleaner
-
-# from viewer.reports_viewer import *
 from viewer.DatasetViewer import DatasetViewer
 from viewer.ReportViewer import ReportViewer, TXTReportViewer, JSONReportViewer
-
 import webapp2
-
-__author__ = 'jotegui'
-
 
 # Administrative processes
 admin = webapp2.WSGIApplication([
