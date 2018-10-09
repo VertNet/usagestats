@@ -1,3 +1,18 @@
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = '@jotegui'
+__contributors__ = "Javier Otegui, John Wieczorek"
+__copyright__ = "Copyright 2018 vertnet.org"
+__version__ = "RepoChecker.py 2018-10-09T14:23-03:00"
+
+REPOCHECKER_VERSION=__version__
+
 import json
 import logging
 
@@ -7,9 +22,6 @@ import webapp2
 from config import *
 from util import apikey, cartodb_query
 
-__author__ = '@jotegui'
-
-
 class RepoChecker(webapp2.RequestHandler):
     def post(self):
         self.get()
@@ -17,8 +29,9 @@ class RepoChecker(webapp2.RequestHandler):
     def get(self):
         self.response.headers['Content-Type'] = 'application/json'
 
-        logging.info("Checking consistency of repository names"
-                     " between CartoDB and GitHub.")
+        s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+        s += '\nChecking consistency of repository names between CartoDB and GitHub.'
+        logging.info(s)
 
         self.failed_repos = []
         self.check_failed_repos()
@@ -30,7 +43,9 @@ class RepoChecker(webapp2.RequestHandler):
         if len(self.failed_repos) > 0:
             res['failed_repos'] = self.failed_repos
             res['result'] = "error"
-            logging.error("There were issues in the repository name matching.")
+            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s += '\nThere were issues in the repository name matching.'
+            logging.error(s)
 
             error_msg = "\n".join([", ".join(x) for x in self.failed_repos])
             mail.send_mail(
@@ -41,21 +56,24 @@ class RepoChecker(webapp2.RequestHandler):
 Hey there,
 
 This is an automatic message sent by the Resource name checker tool
-to inform you that the script found {0} name inconsistencies in some
-repositories between CartoDB's resource_staging table and the name of
-organization and/or repository on GitHub. These are the specific
-repositories that failed (names as in CartoDB):
+to inform you that the script found {0} name combinations of github_orgname and
+github_reponame in the VertNet Carto resource_staging table that do not correspond to
+an organization/repository combination on GitHub. These are the specific
+repositories that failed (names as in Carto):
 
 {1}
 
-Please, fix them and then go to {2} to restart the process.
+Please, fix the entries in the resource_staging table and then go to 
+{2} to restart the process.
 
 Thank you!
 """.format(len(self.failed_repos), error_msg, "http://%s/" % MODULE))
 
         else:
             res['result'] = "success"
-            logging.info("The consistency check could not find any issue.")
+            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s += '\nThe repository consistency check was successful - no errors found.'
+            logging.info(s)
 
         self.response.write(json.dumps(res))
         return
@@ -80,7 +98,7 @@ Thank you!
                 continue
 
             rpc = urlfetch.create_rpc()
-            url = '/'.join([GH_URL, 'orgs', orgname, 'repos'])
+            url = '/'.join([GH_URL, 'orgs', orgname, 'repos?per_page=100'])
             urlfetch.set_default_fetch_deadline(60)
             urlfetch.make_fetch_call(rpc, url, headers=headers)
 
@@ -90,7 +108,9 @@ Thank you!
             rpc = repos[repo]
             result = rpc.get_result()
             content = json.loads(result.content)
-            logging.info("Got {0} repos for {1}".format(len(content), repo[0]))
+            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s += '\nGot {0} repos for {1}'.format(len(content), repo[0])
+            logging.info(s)
             repo_list = [x['name'] for x in content]
             if repo_list is None or repo[1] not in repo_list:
                 self.failed_repos.append(repo)
@@ -104,8 +124,9 @@ Thank you!
                  where ipt is true and networks like '%VertNet%';"
 
         all_repos = cartodb_query(query)
-        logging.info("Got {0} repos currently in CartoDB"
-                     .format(len(all_repos)))
+        s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+        s += '\nGot {0} repos currently in CartoDB'.format(len(all_repos))
+        logging.info(s)
 
         result = []
         for repo in all_repos:
