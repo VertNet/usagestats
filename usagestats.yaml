@@ -1,12 +1,12 @@
 # CODEBASE INFO
-# Last pushed to master branch: 2018-10-09
-# Last change to master branch: Patch to page through carto results
+# Last pushed to master branch: 2018-10-10
+# Last change to master branch: Stop pushing to GitHub when there are no more results
 # Last pushed to dev branch: ?
 # Last change to dev branch: ?
 #
 # DEPLOYMENT INFO
 # Last deployed dev version: 2016-10-31
-# Last deployed prod version: 2018-10-09
+# Last deployed prod version: 2018-10-10
 # command: gcloud app deploy usagestats.yaml
 # args:
 #   --project vertnet-portal  # Optional, no need if gcloud is configured to use this project

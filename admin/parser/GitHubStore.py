@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-09T16:58-03:00"
+__version__ = "GitHubStore.py 2018-10-10T07:33-03:00"
 GitHubStore_VERSION=__version__
 
 import time
@@ -112,7 +112,10 @@ class GitHubStore(webapp2.RequestHandler):
             logging.info("Cursor built: %s" % cursor)
 
         # Initialize loop
-        more = True
+        if reports_query.count==0:
+            more = False
+        else:
+            more = True
 
         # Loop until DeadlineExceededError
         try:
