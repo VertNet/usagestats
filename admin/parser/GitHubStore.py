@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-11T15:11-03:00"
+__version__ = "GitHubStore.py 2018-10-11T18:10-03:00"
 GitHubStore_VERSION=__version__
 
 import time
@@ -135,8 +135,11 @@ class GitHubStore(webapp2.RequestHandler):
                     PAGE_SIZE, start_cursor=cursor
                 )
 
-                # Store extracted report
-                self.store_report(report[0])
+                # Check to see if there is actually another report
+                if report is not None and len(report) != 0:
+                    # Store extracted report
+                    self.store_report(report[0])
+                    more = False
 
                 if more is True:
                     cursor = new_cursor
@@ -171,13 +174,15 @@ Just a brief note to let you know the extraction of %s stats has successfully
 finished, and all reports have been stored in their respective GitHub
 repositories (but no issue was created).
 
+Code version: %s
+
 Congrats!
-""" % self.period)
+""" % (__version__,self.period) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
             s =  "Version: %s\n" % __version__
-            s += "Response: resp"
+            s += "Response: %s" % resp
             logging.info(s)
             self.response.write(json.dumps(resp)+"\n")
 
@@ -225,9 +230,6 @@ Congrats!
 
         # Check that dataset exists
         if not dataset_entity:
-            # Set 'stored' to True to avoid endless loop in the case a dataset does
-            # not exist in the datastore.
-            report_entity.stored = True
             self.error(500)
             resp = {
                 "status": "error",
@@ -241,6 +243,13 @@ Congrats!
             s += "Response: %s" % resp
             logging.info(s)
             self.response.write(json.dumps(resp)+"\n")
+            # Set 'stored' to True to avoid endless loop in the case a dataset does
+            # not exist in the datastore.
+            report_entity.stored = True
+
+            # Store updated version of Report entity
+            report_entity.put()
+
             return
 
         # GitHub stuff
