@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "util.py 2018-10-09T15:35-03:00"
+__version__ = "util.py 2018-10-11T12:47-03:00"
 UTIL_VERSION=__version__
 
 from datetime import datetime
@@ -135,7 +135,7 @@ ghb_headers = {
     "User-Agent": "jotegui",
     "Authorization": "token {0}".format(apikey('ghb'))
 }
-ghb_org = 'jotegui'
+ghb_org = 'VertNet'
 ghb_rep = 'statReports'
 tree_sha = '491528cecf9956e69e22d22d2349436142d2cbb6'
 

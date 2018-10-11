@@ -17,3 +17,6 @@ lib/
 
 # Old stuff
 old/
+
+# Mac System file
+.DS_STORE*

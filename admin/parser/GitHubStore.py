@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-10T09:59-03:00"
+__version__ = "GitHubStore.py 2018-10-11T15:11-03:00"
 GitHubStore_VERSION=__version__
 
 import time
@@ -50,7 +50,9 @@ class GitHubStore(webapp2.RequestHandler):
                 "status": "error",
                 "message": "Period parameter was not provided."
             }
-            logging.error(resp)
+            s =  "Version: %s\n" % __version__
+            s += "%s" % resp
+            logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
             return
         else:
@@ -88,7 +90,9 @@ class GitHubStore(webapp2.RequestHandler):
                                 .lower() == 'true'
 
         # Prepare list of reports to store
-        logging.info("Getting list of reports to store")
+        s =  "Version: %s\n" % __version__
+        s += "Getting list of reports to store"
+        logging.info(s)
 
         # Base query
         reports_q = Report.query()
@@ -102,14 +106,18 @@ class GitHubStore(webapp2.RequestHandler):
         # Store final query
         reports_query = reports_q
 
-        logging.info("Found %d Reports to store" % reports_query.count())
+        s =  "Version: %s\n" % __version__
+        s += "Found %d Reports to store" % reports_query.count()
+        logging.info(s)
 
         # Get cursor from request, if any
         cursor_str = self.request.get("cursor", None)
         cursor = None
         if cursor_str:
             cursor = ndb.Cursor(urlsafe=cursor_str)
-            logging.info("Cursor built: %s" % cursor)
+            s =  "Version: %s\n" % __version__
+            s += "Cursor built: %s" % cursor
+            logging.info(s)
 
         # Initialize loop
         if reports_query.count==0:
@@ -133,11 +141,13 @@ class GitHubStore(webapp2.RequestHandler):
                 if more is True:
                     cursor = new_cursor
 
-            logging.info("Finished storing all reports")
+            s =  "Version: %s\n" % __version__
+            s += "Finished storing all reports"
+            logging.info(s)
 
             resp = {
                 "status": "success",
-                "message": "Successfully finished storing all reports",
+                "message": s,
             }
 
             # Launch process to create issues on GitHub, if applicable
@@ -166,7 +176,9 @@ Congrats!
 
             # In any case, store period data, show message and finish
             period_entity.put()
-            logging.info(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Response: resp"
+            logging.info(s)
             self.response.write(json.dumps(resp)+"\n")
 
             return
@@ -176,12 +188,13 @@ Congrats!
             taskqueue.add(url=URI_GITHUB_STORE,
                           params={"cursor": cursor.urlsafe()},
                           queue_name=QUEUENAME)
-            logging.info("Caught a DeadlineExceededError. Relaunching")
+            s =  "Version: %s\n" % __version__
+            s += "Caught a DeadlineExceededError. Relaunching"
+            logging.info(s)
 
             resp = {
                 "status": "in progress",
-                "message": "Caught a DeadlineExceededError."
-                           " Relaunching with new cursor",
+                "message": s,
                 "data": {
                     "period": self.period,
                     "cursor": cursor.urlsafe()
@@ -196,19 +209,25 @@ Congrats!
         """."""
 
         report_key = report_entity.key
-        logging.info("Ready to store %s" % report_key.id())
+        s =  "Version: %s\n" % __version__
+        s += "Ready to store %s" % report_key.id()
+        logging.info(s)
 
         gbifdatasetid = report_entity.reported_resource.id()
-        logging.info("Storing report for dataset {0}".format(gbifdatasetid))
+        s =  "Version: %s\n" % __version__
+        s += "Storing report for dataset %s" % gbifdatasetid
+        logging.info(s)
 
         # Build variables
         dataset_key = report_entity.reported_resource
         period_key = report_entity.reported_period
-        dataset_entity, period_entity = ndb.get_multi([dataset_key,
-                                                       period_key])
+        dataset_entity, period_entity = ndb.get_multi([dataset_key, period_key])
 
         # Check that dataset exists
         if not dataset_entity:
+            # Set 'stored' to True to avoid endless loop in the case a dataset does
+            # not exist in the datastore.
+            report_entity.stored = True
             self.error(500)
             resp = {
                 "status": "error",
@@ -218,21 +237,20 @@ Congrats!
                     "missing_dataset_key": gbifdatasetid
                 }
             }
-            logging.error(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Response: %s" % resp
+            logging.info(s)
             self.response.write(json.dumps(resp)+"\n")
             return
 
         # GitHub stuff
         org = dataset_entity.github_orgname
         repo = dataset_entity.github_reponame
-        logging.info(org)
-        logging.info(repo)
-        key = apikey('ghb')
         user_agent = 'VertNet'
+        key = apikey('ghb')
 
         # Testing block
         if self.testing:
-            logging.info("Using testing repositories in VertNet GitHub org")
             org = 'VertNet'
             repo = 'statReports'
             user_agent = 'VertNet'
@@ -242,6 +260,11 @@ Congrats!
 #             repo = 'statReports'
 #             user_agent = 'jotegui'
 #             key = apikey('jot')
+
+        s =  "Version: %s\n" % __version__
+        s += "Using GitHub repository %s/%s " % (org, repo)
+        s += "as user_agent %s" % user_agent
+        logging.info(s)
 
         # GitHub request headers
         headers = {
@@ -304,19 +327,29 @@ Congrats!
 
             # HTTP 201 = Success
             if r.status_code == 201:
-                logging.info("Report %s successfully stored" % report_key.id())
+                s =  "Version: %s\n" % __version__
+                s += "Report %s successfully stored" % report_key.id()
+                logging.info(s)
                 report_entity.stored = True
             # HTTP 422 = 'SHA' missing, meaning report was already there
             elif r.status_code == 422:
-                logging.warning("Report %s was already stored, but 'stored'"
-                                " property was stored as 'False'. This call"
-                                " shouldn't have happened" % report_key.id())
-                logging.error(r.content)
+                s =  "Version: %s\n" % __version__
+                s += "Report %s was already stored, but " % report_key.id()
+                s += "'stored' property was 'False'. "
+                s += "This call should not have happened."
+                logging.warning(s)
+                s =  "Version: %s\n" % __version__
+                s += "Content: " % r.content
+                logging.error(s)
                 report_entity.stored = True
             # Other generic problems
             else:
-                logging.error("Report %s couldn't be stored" % report_key.id())
-                logging.error(r.content)
+                s =  "Version: %s\n" % __version__
+                s += "Report %s couldn't be stored" % report_key.id()
+                logging.error(s)
+                s =  "Version: %s\n" % __version__
+                s += "Content: " % r.content
+                logging.error(s)
                 resp = {
                     "status": "failed",
                     "message": "Got uncaught error code when uploading"
@@ -330,13 +363,18 @@ Congrats!
                         "error_content": r.content
                     }
                 }
-                logging.error(resp)
+                s =  "Version: %s\n" % __version__
+                s += "Response: " % resp
+                logging.error(s)
                 return
 
         # This 'else' should NEVER happen
         else:
-            logging.warning("Report %s was already stored. This call"
-                            " shouldn't have happened" % report_key.id())
+            s =  "Version: %s\n" % __version__
+            s += "Report %s was already stored, but " % report_key.id()
+            s += "'stored' property was 'False'. "
+            s += "This call should not have happened."
+            logging.warning(s)
 
         # Store updated version of Report entity
         report_entity.put()

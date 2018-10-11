@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GetEvents.py 2018-10-09T15:40-03:00"
+__version__ = "GetEvents.py 2018-10-11T12:45-03:00"
 GETEVENTS_VERSION=__version__
 
 import json
@@ -36,17 +36,78 @@ class GetEvents(webapp2.RequestHandler):
         ], key_prefix="usagestats_parser_")
 
         # If GetEvents is called directly, no 'period' will be found
-        # Then, get Period from request
+        # Then, get period from request
         try:
             self.period = params['period']
         except KeyError:
-            logging.info("Trying to extract 'period' from request")
-            self.period = self.request.get("period")
+            s =  "Version: %s\n" % __version__
+            s += "Unable to extract 'period' from params: %s" % params
+            logging.info(s)
 
-        self.table_name = params['table_name']
-        logging.info("Using %s as data table" % self.table_name)
-        self.downloads_extracted = params['downloads_extracted']
-        self.searches_extracted = params['searches_extracted']
+        if self.period is None:
+            try:
+                self.period = self.request.get('period')
+            except KeyError:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting GetEvents. "
+                s += "Unable to extract 'period' from request: %s" % request
+                logging.info(s)
+                return
+
+        try:
+            self.table_name = params['table_name']
+        except KeyError:
+            s =  "Version: %s\n" % __version__
+            s += "Unable to extract 'table_name' from params: %s" % params
+            logging.info(s)
+
+        if self.table_name is None:
+            try:
+                self.table_name = self.request.get('table_name')
+            except KeyError:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting GetEvents. "
+                s += "Unable to extract 'table_name' from request: %s" % request
+                logging.info(s)
+                return
+        
+        try:
+            self.downloads_extracted = params['downloads_extracted']
+        except KeyError:
+            s =  "Version: %s\n" % __version__
+            s += "Unable to extract 'downloads_extracted' from params: %s" % params
+            logging.info(s)
+
+        if self.downloads_extracted is None:
+            try:
+                self.downloads_extracted = self.request.get('downloads_extracted')
+            except KeyError:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting GetEvents. "
+                s += "Unable to extract 'downloads_extracted' from request: %s" % request
+                logging.info(s)
+                return
+
+        try:
+            self.searches_extracted = params['searches_extracted']
+        except KeyError:
+            s =  "Version: %s\n" % __version__
+            s += "Unable to extract 'searches_extracted' from params: %s" % params
+            logging.info(s)
+
+        if self.searches_extracted is None:
+            try:
+                self.searches_extracted = self.request.get('searches_extracted')
+            except KeyError:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting GetEvents. "
+                s += "Unable to extract 'searches_extracted' from request: %s" % request
+                logging.info(s)
+                return
+
+        s =  "Version: %s\n" % __version__
+        s += "Using %s as data table" % self.table_name
+        logging.info(s)
 
         # Start with downloads
         if self.downloads_extracted is False:
@@ -77,7 +138,9 @@ class GetEvents(webapp2.RequestHandler):
             return
 
         # Build temporary entities
-        logging.info("Storing %d resources" % len(self.resources))
+        s =  "Version: %s\n" % __version__
+        s += "Storing %d resources" % len(self.resources)
+        logging.info(s)
         r = []
         for resource in self.resources:
             params = {
@@ -88,16 +151,20 @@ class GetEvents(webapp2.RequestHandler):
             r.append(ReportToProcess(**params))
 
         # Store temporary entities
-        logging.info("Putting %d entities" % len(r))
+        s =  "Version: %s\n" % __version__
+        s += "Putting %d entities" % len(r)
+        logging.info(s)
         sr = ndb.put_multi(r)
 
         # Check
         if len(sr) != len(r):
-            logging.error("Not all resources were put to process.")
+            s =  "Version: %s\n" % __version__
+            s += "Not all resources were put to process."
+            logging.error(s)
             self.error(500)
             resp = {
                 "status": "error",
-                "message": "Not all resources were put to process.",
+                "message": s,
                 "data": {
                     "period": self.period,
                     "t": self.t,
@@ -133,7 +200,9 @@ class GetEvents(webapp2.RequestHandler):
         if p['searches_extracted'] is True and\
            p['downloads_extracted'] is True:
             # Call 'process_events'
-            logging.info("All searches and downloads extracted")
+            s =  "Version: %s\n" % __version__
+            s += "All searches and downloads extracted"
+            logging.info(s)
             taskqueue.add(url=URI_PROCESS_EVENTS,
                           queue_name=QUEUENAME)
         else:
@@ -146,7 +215,9 @@ class GetEvents(webapp2.RequestHandler):
         """Build query and extract records."""
 
         # Extract Carto data, base query
-        logging.info("Building %s query" % self.t)
+        s =  "Version: %s\n" % __version__
+        s += "Building %s query" % self.t
+        logging.info(s)
         if self.t == 'download':
             # Line #6 of SQL is to avoid too large queries
             query = "SELECT cartodb_id, lat, lon, created_at, " \
@@ -182,8 +253,9 @@ class GetEvents(webapp2.RequestHandler):
             queried_date += timedelta(days=32)
             query = add_time_limit(query=query, today=queried_date)
 
-        logging.info("Executing query")
-        logging.info(query)
+        s =  "Version: %s\n" % __version__
+        s += "Executing query:\n%s" % query
+        logging.info(s)
         try:
             data = carto_query(query)
         except ApiQueryMaxRetriesExceededError:
@@ -203,15 +275,18 @@ class GetEvents(webapp2.RequestHandler):
         self.data = data
 
         # Finish method
-        logging.info("Extracted %d %s events" % (len(data), self.t))
+        s =  "Version: %s\n" % __version__
+        s += "Extracted %d %s events" % (len(data), self.t)
+        logging.info(s)
         return 0
 
     def parse_events(self):
-        """Preformat some special fields and
-redistribute records into resources."""
+        """Preformat some special fields and redistribute records into resources."""
 
         # Format according to the Model classes
-        logging.info("Formatting results")
+        s =  "Version: %s\n" % __version__
+        s += "Formatting results"
+        logging.info(s)
         resources = {}
 
         for event in self.data:
@@ -272,7 +347,9 @@ redistribute records into resources."""
         self.resources = resources
 
         # Finish method
-        logging.info("Created %d resources" % len(self.resources))
+        s =  "Version: %s\n" % __version__
+        s += "Created %d resources" % len(self.resources)
+        logging.info(s)
         return 0
 
     def update_period_counts(self):
@@ -298,11 +375,13 @@ redistribute records into resources."""
         # Store updated period data
         k = period_entity.put()
         if k != period_key:
-            logging.error("Could not update %s counts in period" % self.t)
+            s =  "Version: %s\n" % __version__
+            s += "Could not update %s counts in period" % self.t
+            logging.error(s)
             self.error(500)
             resp = {
                 "status": "error",
-                "message": "Could not update %s counts in period" % self.t,
+                "message": s,
                 "data": {
                     "period": self.period,
                     "event_type": self.t
@@ -311,5 +390,7 @@ redistribute records into resources."""
             self.response.write(json.dumps(resp) + "\n")
             return 1
         else:
-            logging.info("Period counts for %s events updated" % self.t)
+            s =  "Version: %s\n" % __version__
+            s += "Period counts for %s events updated" % self.t
+            logging.info(s)
         return 0

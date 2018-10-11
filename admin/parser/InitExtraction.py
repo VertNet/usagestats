@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "InitExtraction.py 2018-10-09T16:04-03:00"
+__version__ = "InitExtraction.py 2018-10-11T12:34-03:00"
 INITEXTRACTION_VERSION=__version__
 
 import json
@@ -79,10 +79,15 @@ and launch searches and downloads extractions."""
         }, key_prefix="usagestats_parser_")
 
         if len(missed) > 0:
-            logging.warning("Some call parameters were not added " +
-                            "to the memcache: {0}".format(missed))
+            s =  "Version: %s\n" % __version__
+            s += "Call parameters for memcache missing: %s " % missed
+            logging.warning(s)
+#            logging.warning("Some call parameters were not added " +
+#                            "to the memcache: {0}".format(missed))
         else:
-            logging.info("All call parameters successfully added to memcache")
+            s =  "Version: %s\n" % __version__
+            s += "Call parameters successfully added to memcache"
+            logging.info(s)
 
         return 0
 
@@ -93,22 +98,26 @@ and create a new Period."""
 
         # Check that 'period' is provided
         if not self.period:
-            logging.error("Period not found on POST body. Aborting.")
+            s =  "Version: %s\n" % __version__
+            s += "Period not found on POST body. Aborting."
+            logging.error(s)
             self.error(400)
             resp = {
                 "status": "error",
-                "message": "Period not found on POST body. " +
-                           "Aborting."
+                "message": s
             }
             self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Check that 'period' is valid
         if len(self.period) != 6:
+            s =  "Version: %s\n" % __version__
+            s += "Malformed period. Should be YYYYMM (e.g., 201603)"
+            logging.error(s)
             self.error(400)
             resp = {
                 "status": "error",
-                "message": "Malformed period. Should be YYYYMM (e.g., 201603)"
+                "message": s
             }
             self.response.write(json.dumps(resp) + "\n")
             return 1
@@ -120,32 +129,46 @@ and create a new Period."""
         # If existing, abort or clear and start from scratch
         if period_entity:
             if self.force is not True:
-                logging.error("Period %s already exists. " % self.period +
-                              "Aborting. To override, use 'force=true'.")
+                s =  "Version: %s\n" % __version__
+                s += "Period %s already exists. " % self.period
+                s += "Aborting. To override, use 'force=true'."
+                logging.error(s)
                 resp = {
                     "status": "error",
-                    "message": "Period %s already exists. " % self.period +
-                               "Aborting. To override, use 'force=true'."
+                    "message": s
                 }
                 self.response.write(json.dumps(resp) + "\n")
                 return 1
             else:
-                logging.warning("Period %s already exists. " % self.period +
-                                "Overriding.")
+                s =  "Version: %s\n" % __version__
+                s += "Period %s already exists. " % self.period
+                s += "Overriding."
+                logging.warning(s)
+
                 # Delete Reports referencing period
                 r = Report.query().filter(Report.reported_period == period_key)
                 to_delete = r.fetch(keys_only=True)
-                logging.info("Deleting %d Report entities" % len(to_delete))
+                s =  "Version: %s\n" % __version__
+                s += "Deleting %d Report entities" % len(to_delete)
+                logging.info(s)
                 deleted = ndb.delete_multi(to_delete)
-                logging.info("%d Report entities removed" % len(deleted))
+                s =  "Version: %s\n" % __version__
+                s += "%d Report entities removed" % len(deleted)
+                logging.info(s)
 
                 # Delete Period itself
-                logging.info("Deleting Period %s" % period_key)
+                s =  "Version: %s\n" % __version__
+                s += "Deleting Period %s" % period_key
+                logging.info(s)
                 period_key.delete()
-                logging.info("Period entity deleted")
+                s =  "Version: %s\n" % __version__
+                s += "Period %s deleted" % period_key
+                logging.info(s)
 
         # Create new Period (id=YYYYMM)
-        logging.info("Creating new Period %s" % self.period)
+        s =  "Version: %s\n" % __version__
+        s += "Creating new Period %s" % self.period
+        logging.info(s)
         y, m = (int(self.period[:4]), int(self.period[-2:]))
         p = Period(id=self.period)
         p.year = y
@@ -155,22 +178,27 @@ and create a new Period."""
 
         # Check
         if period_key:
-            logging.info("New Period %s created successfully." % self.period)
-            logging.info("New period's key = %s" % period_key)
+            s =  "Version: %s\n" % __version__
+            s += "New Period %s created successfully" % self.period
+            s += "with key %s" % period_key
+            logging.info(s)
         else:
             self.error(500)
-            logging.error("Could not create new Period %s" % self.period)
+            s =  "Version: %s\n" % __version__
+            s += "Could not create new Period %s" % self.period
+            logging.error(s)
             resp = {
                 "status": "error",
-                "message": "Could not create new Period %s" % self.period
+                "message": s
             }
             self.response.write(json.dumps(resp) + "\n")
             return 1
 
         # Clear temporary entities
         keys_to_delete = ReportToProcess.query().fetch(keys_only=True)
-        logging.info("Deleting %d temporal (internal use only) entities"
-                     % len(keys_to_delete))
+        s =  "Version: %s\n" % __version__
+        s += "Deleting %d temporal (internal use only) entities" % len(keys_to_delete)
+        logging.info(s)
         ndb.delete_multi(keys_to_delete)
 
         return 0
