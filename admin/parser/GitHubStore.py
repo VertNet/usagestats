@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-11T18:10-03:00"
+__version__ = "GitHubStore.py 2018-10-11T19:07-03:00"
 GitHubStore_VERSION=__version__
 
 import time
@@ -177,7 +177,7 @@ repositories (but no issue was created).
 Code version: %s
 
 Congrats!
-""" % (__version__,self.period) )
+""" % (self.period, __version__) )
 
             # In any case, store period data, show message and finish
             period_entity.put()

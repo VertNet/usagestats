@@ -1,9 +1,3 @@
-# CODEBASE INFO
-# Last pushed to master branch: 2018-10-10
-# Last change to master branch: Avoid endless loop if dataset not in datastore.
-# Last pushed to dev branch: ?
-# Last change to dev branch: ?
-#
 # DEPLOYMENT INFO
 # Last deployed dev version: 2016-10-31
 # Last deployed prod version: 2018-10-11
