@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "Status.py 2018-10-09T15:50-03:00"
-STATUS_VERSION=__version__
+__version__ = "Status.py 2018-10-12T10:34-03:00"
 
 import json
 from google.appengine.api.modules import modules
@@ -22,8 +21,7 @@ import webapp2
 
 _HOSTNAME = modules.get_hostname(module="tools-usagestats")
 JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__),
-                                   'templates')),
+    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__),'templates')),
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
 
@@ -34,6 +32,7 @@ class Status(webapp2.RequestHandler):
 
         # Items in datastore
         d = Dataset.query().count()
+
         # Items in Carto
         q = "select count(*) as c from resource_staging" + \
             " where ipt is true and networks like '%VertNet%';"

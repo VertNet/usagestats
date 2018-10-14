@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "usagestats.py 2018-10-09T15:58-03:00"
-USAGESTATS_VERSION=__version__
+__version__ = "usagestats.py 2018-10-11T11:51-03:00"
 
 from admin.parser.InitExtraction import InitExtraction
 from admin.parser.GetEvents import GetEvents
@@ -40,8 +39,7 @@ admin = webapp2.WSGIApplication([
     # Accessory tools
     ('/admin/setup/datasets', DatasetsSetup),
     ('/admin/status', Status),
-    webapp2.Route(r'/admin/status/period/<period>',
-                  handler=PeriodStatus),
+    webapp2.Route(r'/admin/status/period/<period>', handler=PeriodStatus),
     ('/admin/tools/repo_checker', RepoChecker),
     ('/admin/tools/email_tester', EmailTester),
     ('/admin/tools/entity_cleaner', EntityCleaner),

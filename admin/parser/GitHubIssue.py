@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubIssue.py 2018-10-09T17:00-03:00"
-GITHUBISSUE=__version__
+__version__ = "GitHubIssue.py 2018-10-14T18:52-03:00"
 
 import time
 import json
@@ -31,8 +30,7 @@ class GitHubIssue(webapp2.RequestHandler):
 
         # Get parameters from memcache
         memcache_keys = ["period", "testing"]
-        params = memcache.get_multi(memcache_keys,
-                                    key_prefix="usagestats_parser_")
+        params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
 
         # Try to get 'params' from memcache
         try:
@@ -48,7 +46,9 @@ class GitHubIssue(webapp2.RequestHandler):
                 "status": "error",
                 "message": "Period parameter was not provided."
             }
-            logging.error(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Response: %s" % resp
+            logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
             return
         else:
@@ -66,7 +66,9 @@ class GitHubIssue(webapp2.RequestHandler):
                     "period": self.period
                 }
             }
-            logging.error(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Provided period does not exist in datastore: %s" % self.period
+            logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
             return
 
@@ -78,7 +80,9 @@ class GitHubIssue(webapp2.RequestHandler):
             self.testing = self.request.get('testing').lower() == 'true'
 
         # Prepare list of reports to store
-        logging.info("Getting list of reports to send issue")
+        s =  "Version: %s\n" % __version__
+        s += "Getting list of reports to send issue"
+        logging.info(s)
 
         # Base query
         reports_q = Report.query()
@@ -89,23 +93,34 @@ class GitHubIssue(webapp2.RequestHandler):
         # Only those with 'issue_sent' property set to False
         reports_q = reports_q.filter(Report.issue_sent == False)
 
+        # Only those with 'report_stored' property set to True
+        reports_q = reports_q.filter(Report.stored == True)
+
         # Store final query
         reports_query = reports_q
 
-        logging.info("Found %d Reports to send issue" % reports_query.count())
+        s =  "Version: %s\n" % __version__
+        s += "Found %d Reports to send issue" % reports_query.count()
+        logging.info(s)
 
         # Get cursor from request, if any
         cursor_str = self.request.get("cursor", None)
         cursor = None
         if cursor_str:
             cursor = ndb.Cursor(urlsafe=cursor_str)
-            logging.info("Cursor built: %s" % cursor)
+            s =  "Version: %s\n" % __version__
+            s += "Cursor built: %s" % cursor
+            logging.info(s)
 
         # Initialize loop
-        more = True
+        if reports_query.count==0:
+            more = False
+        else:
+            more = True
 
         # Loop until DeadlineExceededError
         try:
+            datasets=[]
             # or until no more reports left
             while more is True:
 
@@ -114,17 +129,23 @@ class GitHubIssue(webapp2.RequestHandler):
                     PAGE_SIZE, start_cursor=cursor
                 )
 
-                # Send issue
-                self.send_issue(report[0])
+                # Check to see if there is actually another report
+                if report is not None and len(report) != 0:
+                    # Send issue
+                    self.send_issue(report[0])
+                    gbifdatasetid = report[0].reported_resource.id()
+                    datasets.append(gbifdatasetid)
 
                 if more is True:
                     cursor = new_cursor
 
-            logging.info("Finished creating all issues")
+            s =  "Version: %s\n" % __version__
+            s += "Finished creating all issues"
+            logging.info(s)
 
             resp = {
                 "status": "success",
-                "message": "Successfully finished creating all issues",
+                "message": s,
             }
 
             period_entity.status = "done"
@@ -135,12 +156,17 @@ class GitHubIssue(webapp2.RequestHandler):
                 body="""
 Hey there!
 
-Just a brief note to let you know the extraction of %s stats has successfully
-finished, all reports have been stored in their respective GitHub
+Just a brief note to let you know the GitHubIssue process for period %s stats has 
+successfully finished. Reports have been stored in their respective GitHub
 repositories and issues have been created. The full package.
 
+Issues submitted for datasets:
+%s
+
 Congrats!
-""" % self.period)
+
+Code version: %s
+""" % (self.period, __version__, datasets) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
@@ -154,18 +180,21 @@ Congrats!
             taskqueue.add(url=URI_GITHUB_ISSUE,
                           params={"cursor": cursor.urlsafe()},
                           queue_name=QUEUENAME)
-            logging.info("Caught a DeadlineExceededError. Relaunching")
+            s =  "Version: %s\n" % __version__
+            s += "Caught a DeadlineExceededError. Relaunching."
+            logging.info(s)
 
             resp = {
                 "status": "in progress",
-                "message": "Caught a DeadlineExceededError."
-                           " Relaunching with new cursor",
+                "message": s,
                 "data": {
                     "period": self.period,
                     "cursor": cursor.urlsafe()
                 }
             }
-            logging.info(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Response: %s" % resp
+            logging.info(s)
             self.response.write(json.dumps(resp)+"\n")
 
         return
@@ -174,16 +203,19 @@ Congrats!
         """."""
 
         report_key = report_entity.key
-        logging.info("Ready to send issue to %s" % report_key.id())
+        s =  "Version: %s\n" % __version__
+        s += "Ready to send issue %s" % report_key.id()
+        logging.info(s)
 
         gbifdatasetid = report_entity.reported_resource.id()
-        logging.info("Sending issue for dataset {0}".format(gbifdatasetid))
+        s =  "Version: %s\n" % __version__
+        s += "Storing issue for dataset %s" % gbifdatasetid
+        logging.info(s)
 
         # Build variables
         dataset_key = report_entity.reported_resource
         period_key = report_entity.reported_period
-        dataset_entity, period_entity = ndb.get_multi([dataset_key,
-                                                       period_key])
+        dataset_entity, period_entity = ndb.get_multi([dataset_key, period_key])
 
         # Check that dataset exists
         if not dataset_entity:
@@ -196,21 +228,30 @@ Congrats!
                     "missing_dataset_key": dataset_key
                 }
             }
-            logging.error(resp)
+            s =  "Version: %s\n" % __version__
+            s += "Response: %s" % resp
+            logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
+
+            # Set 'issue_sent' to True to avoid endless loop in the case a dataset does
+            # not exist in the datastore.
+            # TODO: Better if the Report entity had a flag for 'issue_skipped'
+            # with default None. But, for now...
+            report_entity.issue_sent = True
+
+            # Store updated version of Report entity
+            report_entity.put()
+
             return
 
         # GitHub stuff
         org = dataset_entity.github_orgname
         repo = dataset_entity.github_reponame
-        logging.info(org)
-        logging.info(repo)
-        key = apikey('ghb')
         user_agent = 'VertNet'
+        key = apikey('ghb')
 
         # Testing block
         if self.testing:
-            logging.info("Using testing repositories in VertNet GitHub org")
             org = 'VertNet'
             repo = 'statReports'
             user_agent = 'VertNet'
@@ -220,6 +261,11 @@ Congrats!
 #             repo = 'statReports'
 #             user_agent = 'jotegui'
 #             key = apikey('jot')
+
+        s =  "Version: %s\n" % __version__
+        s += "Using GitHub repository %s/%s " % (org, repo)
+        s += "as user_agent %s" % user_agent
+        logging.info(s)
 
         # GitHub request headers
         headers = {
@@ -231,10 +277,11 @@ Congrats!
         # Issue creation, only if issue not previously created
         if report_entity.issue_sent is False:
 
-            link = "http://" + MODULE + "/reports/" + gbifdatasetid + \
-                    "/" + self.period + "/"
-            link_all = "http://" + MODULE + "/reports/" + gbifdatasetid + "/"
-
+#            link = "http://" + MODULE + "/reports/" + gbifdatasetid + \
+#                    "/" + self.period + "/"
+#            link_all = "http://" + MODULE + "/reports/" + gbifdatasetid + "/"
+            link_all = "http://%s/reports/%s/" % (MODULE, gbifdatasetid)
+            link = "http://%s/reports/%s/%s/" % (MODULE, gbifdatasetid, self.period)
             title = 'Monthly VertNet data use report for %s-%s, resource %s' \
                     % (period_entity.year,
                        period_entity.month,
@@ -261,8 +308,8 @@ http://www.vertnet.org/feedback/contact.html
 
 Thank you for being a part of VertNet.
 """.format(link, link_all)
-            labels = ['report']
 
+            labels = ['report']
             request_url = '{0}/{1}/{2}/issues'.format(GH_REPOS, org, repo)
             json_input = json.dumps({
                 'title': title,
@@ -279,16 +326,14 @@ Thank you for being a part of VertNet.
             )
 
             # Check output
-            logging.info(r.status_code)
-
             # HTTP 201 = Success
             if r.status_code == 201:
-                logging.info("Issue %s successfully sent" % report_key.id())
+                s =  "Version: %s\n" % __version__
+                s += "Status: %s. Issue %s sent." % (r.status_code, report_key.id())
+                logging.info(s)
                 report_entity.issue_sent = True
             # Other generic problems
             else:
-                logging.error("Issue %s couldn't be sent" % report_key.id())
-                logging.error(r.content)
                 resp = {
                     "status": "failed",
                     "message": "Got uncaught error code when uploading"
@@ -302,13 +347,18 @@ Thank you for being a part of VertNet.
                         "error_content": r.content
                     }
                 }
-                logging.error(resp)
+                s =  "Version: %s\n" % __version__
+                s += "Response: %s. " % resp
+                logging.error(s)
                 return
 
         # This 'else' should NEVER happen
         else:
-            logging.warning("Issue for %s was already sent. This call"
-                            " shouldn't have happened" % report_key.id())
+            s =  "Version: %s\n" % __version__
+            s += "Issue for %s was already sent, " % report_key.id()
+            s += "but 'issue_sent' property was 'False'. "
+            s += "This call should not have happened."
+            logging.error(s)
 
         # Store updated version of Report entity
         report_entity.put()

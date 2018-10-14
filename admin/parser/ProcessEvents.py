@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "ProcessEvents.py 2018-10-09T15:54-03:00"
-PROCESSEVENTS_VERSION=__version__
+__version__ = "ProcessEvents.py 2018-10-12T10:38-03:00"
 
 import json
 import logging
@@ -33,8 +32,7 @@ class ProcessEvents(webapp2.RequestHandler):
 
         # Retrieve parameters from memcache and request
         memcache_keys = ["period", "github_store", "github_issue"]
-        params = memcache.get_multi(memcache_keys,
-                                    key_prefix="usagestats_parser_")
+        params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
         self.period = params['period']
         self.github_store = params['github_store']
         self.github_issue = params['github_issue']

@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-11T19:07-03:00"
-GitHubStore_VERSION=__version__
+__version__ = "GitHubStore.py 2018-10-14T18:54-03:00"
 
 import time
 import base64
@@ -32,9 +31,8 @@ class GitHubStore(webapp2.RequestHandler):
     def post(self):
 
         # Get parameters from memcache
-        memcache_keys = ["period", "testing", "github_issue"]
-        params = memcache.get_multi(memcache_keys,
-                                    key_prefix="usagestats_parser_")
+        memcache_keys = ["period", "testing", "github_issue", "gbifdatasetid"]
+        params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
 
         # Try to get 'params' from memcache
         try:
@@ -86,8 +84,18 @@ class GitHubStore(webapp2.RequestHandler):
             self.github_issue = params['github_issue']
         # If not in memcache (i.e., if called directly), get from request
         except KeyError:
-            self.github_issue = self.request.get('github_issue')\
-                                .lower() == 'true'
+            self.github_issue = self.request.get('github_issue').lower() == 'true'
+
+        # Try to get 'gbifdatasetid' from memcache
+        try:
+            self.gbifdatasetid = params['gbifdatasetid']
+        # If not in memcache (i.e., if called directly), get from request
+        except KeyError:
+            datasetid = self.request.get('gbifdatasetid')
+            if datasetid is not None:
+                self.gbifdatasetid = self.request.get('gbifdatasetid').lower()
+            else:
+                self.gbifdatasetid = None
 
         # Prepare list of reports to store
         s =  "Version: %s\n" % __version__
@@ -102,6 +110,21 @@ class GitHubStore(webapp2.RequestHandler):
 
         # Only those with 'stored' property set to False
         reports_q = reports_q.filter(Report.stored == False)
+
+        # And if there is a gbifdatasetid, filter on that
+        if self.gbifdatasetid is not None:
+            dataset_key = ndb.Key("Dataset", self.gbifdatasetid)
+            if dataset_key is None:
+                s =  "Version: %s\n" % __version__
+                s += "gbifdatasetid %s not found in data store." % self.gbifdatasetid
+                logging.info(s)
+                return
+            else:
+                reports_q = reports_q.filter(Report.reported_resource == dataset_key)
+                s =  "Version: %s\n" % __version__
+                s += "gbifdatasetid %s " % self.gbifdatasetid
+                s += "added to query:\n%s" % reports_q
+                logging.info(s)
 
         # Store final query
         reports_query = reports_q
@@ -127,6 +150,7 @@ class GitHubStore(webapp2.RequestHandler):
 
         # Loop until DeadlineExceededError
         try:
+            datasets = []
             # or until no more reports left to store
             while more is True:
 
@@ -139,6 +163,8 @@ class GitHubStore(webapp2.RequestHandler):
                 if report is not None and len(report) != 0:
                     # Store extracted report
                     self.store_report(report[0])
+                    gbifdatasetid = report[0].reported_resource.id()
+                    datasets.append(gbifdatasetid)
                     more = False
 
                 if more is True:
@@ -156,8 +182,7 @@ class GitHubStore(webapp2.RequestHandler):
             # Launch process to create issues on GitHub, if applicable
             if self.github_issue is True:
                 resp['message'] += ". Launching GitHub issue process"
-                taskqueue.add(url=URI_GITHUB_ISSUE,
-                              queue_name=QUEUENAME)
+                taskqueue.add(url=URI_GITHUB_ISSUE, queue_name=QUEUENAME)
 
             # Otherwise, consider finished
             else:
@@ -170,14 +195,17 @@ class GitHubStore(webapp2.RequestHandler):
                     body="""
 Hey there!
 
-Just a brief note to let you know the extraction of %s stats has successfully
-finished, and all reports have been stored in their respective GitHub
-repositories (but no issue was created).
+Just a brief note to let you know the GitHubStore process for period %s has 
+successfully finished. Reports have been stored in their respective GitHub
+repositories
 
-Code version: %s
+Reports stored for datasets:
+%s
 
 Congrats!
-""" % (self.period, __version__) )
+
+Code version: %s
+""" % (self.period, __version__, datasets) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
@@ -241,10 +269,13 @@ Congrats!
             }
             s =  "Version: %s\n" % __version__
             s += "Response: %s" % resp
-            logging.info(s)
+            logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
+
             # Set 'stored' to True to avoid endless loop in the case a dataset does
             # not exist in the datastore.
+            # TODO: Better if the Report entity had a flag for 'storage_skipped'
+            # with default None. But, for now...
             report_entity.stored = True
 
             # Store updated version of Report entity
@@ -316,12 +347,15 @@ Congrats!
                                 dataset_entity.ccode,
                                 "-".join([self.period[:4], self.period[4:]])])
             path = "reports/{0}.txt".format(txt_path)
-            logging.info(path)
+            s =  "Version: %s\n" % __version__
+            s += "Path: %s" % path
+            logging.info(s)
 
             # Build GitHub request URL
-            request_url = '{0}/{1}/{2}/contents/{3}'.format(GH_REPOS,
-                                                            org, repo, path)
-            logging.info(request_url)
+            request_url = '{0}/{1}/{2}/contents/{3}'.format(GH_REPOS, org, repo, path)
+            s =  "Version: %s\n" % __version__
+            s += "Request URL: %s" % request_url
+            logging.info(s)
 
             # Make GitHub call
             r = urlfetch.fetch(
@@ -332,33 +366,24 @@ Congrats!
             )
 
             # Check output
-            logging.info(r.status_code)
-
             # HTTP 201 = Success
             if r.status_code == 201:
                 s =  "Version: %s\n" % __version__
-                s += "Report %s successfully stored" % report_key.id()
+                s += "Status: %s. Report %s sent." % (r.status_code, report_key.id())
                 logging.info(s)
                 report_entity.stored = True
             # HTTP 422 = 'SHA' missing, meaning report was already there
             elif r.status_code == 422:
                 s =  "Version: %s\n" % __version__
-                s += "Report %s was already stored, but " % report_key.id()
-                s += "'stored' property was 'False'. "
-                s += "This call should not have happened."
-                logging.warning(s)
-                s =  "Version: %s\n" % __version__
+                s += "Status: %s. " % r.status_code
+                s += "Report %s was already stored, " % report_key.id()
+                s += "but 'stored' property was 'False'. "
+                s += "This call should not have happened.\n"
                 s += "Content: " % r.content
                 logging.error(s)
                 report_entity.stored = True
             # Other generic problems
             else:
-                s =  "Version: %s\n" % __version__
-                s += "Report %s couldn't be stored" % report_key.id()
-                logging.error(s)
-                s =  "Version: %s\n" % __version__
-                s += "Content: " % r.content
-                logging.error(s)
                 resp = {
                     "status": "failed",
                     "message": "Got uncaught error code when uploading"
@@ -380,8 +405,8 @@ Congrats!
         # This 'else' should NEVER happen
         else:
             s =  "Version: %s\n" % __version__
-            s += "Report %s was already stored, but " % report_key.id()
-            s += "'stored' property was 'False'. "
+            s += "Report %s was already stored, " % report_key.id()
+            s += "but 'stored' property was 'False'. "
             s += "This call should not have happened."
             logging.warning(s)
 

@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "EmailTester.py 2018-10-09T16:06-03:00"
-EMAILTESTER_VERSION=__version__
+__version__ = "EmailTester.py 2018-10-12T11:36-03:00"
 
 from google.appengine.api import mail
 import webapp2
@@ -27,8 +26,7 @@ class EmailTester(webapp2.RequestHandler):
             body="""
 Hey there!
 
-Just a brief note to let you know the extraction of %s stats has successfully
-finished, with no GitHub processes launched.
+Just a test to let you know the EmailTester is working. %s.
 
 Congrats!
 """ % self.period)
