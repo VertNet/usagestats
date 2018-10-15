@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-14T18:54-03:00"
+__version__ = "GitHubStore.py 2018-10-15T00:19-03:00"
 
 import time
 import base64
@@ -112,7 +112,7 @@ class GitHubStore(webapp2.RequestHandler):
         reports_q = reports_q.filter(Report.stored == False)
 
         # And if there is a gbifdatasetid, filter on that
-        if self.gbifdatasetid is not None:
+        if self.gbifdatasetid is not None and len(self.gbifdatasetid) > 0:
             dataset_key = ndb.Key("Dataset", self.gbifdatasetid)
             if dataset_key is None:
                 s =  "Version: %s\n" % __version__
@@ -120,11 +120,11 @@ class GitHubStore(webapp2.RequestHandler):
                 logging.info(s)
                 return
             else:
-                reports_q = reports_q.filter(Report.reported_resource == dataset_key)
                 s =  "Version: %s\n" % __version__
                 s += "gbifdatasetid %s " % self.gbifdatasetid
                 s += "added to query:\n%s" % reports_q
                 logging.info(s)
+                reports_q = reports_q.filter(Report.reported_resource == dataset_key)
 
         # Store final query
         reports_query = reports_q
@@ -154,6 +154,10 @@ class GitHubStore(webapp2.RequestHandler):
             # or until no more reports left to store
             while more is True:
 
+                s =  "Version: %s\n" % __version__
+                s += "Issuing query: %s" % reports_query
+                logging.info(s)
+
                 # Get next (or first) round of results
                 report, new_cursor, more = reports_query.fetch_page(
                     PAGE_SIZE, start_cursor=cursor
@@ -165,7 +169,6 @@ class GitHubStore(webapp2.RequestHandler):
                     self.store_report(report[0])
                     gbifdatasetid = report[0].reported_resource.id()
                     datasets.append(gbifdatasetid)
-                    more = False
 
                 if more is True:
                     cursor = new_cursor
@@ -190,19 +193,17 @@ class GitHubStore(webapp2.RequestHandler):
                 period_entity.status = "done"
                 mail.send_mail(
                     sender=EMAIL_SENDER,
-                    to=EMAIL_RECIPIENT,
+                    to=EMAIL_ADMINS,
                     subject="Usage reports for period %s" % self.period,
                     body="""
 Hey there!
 
-Just a brief note to let you know the GitHubStore process for period %s has 
-successfully finished. Reports have been stored in their respective GitHub
-repositories
+Just a note to let you know the GitHubStore process for the period %s 
+has  successfully finished. Reports have been stored in their respective 
+GitHub repositories.
 
 Reports stored for datasets:
 %s
-
-Congrats!
 
 Code version: %s
 """ % (self.period, __version__, datasets) )

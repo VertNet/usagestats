@@ -9,9 +9,10 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "RepoChecker.py 2018-10-09T15:40-03:00"
+__version__ = "RepoChecker.py 2018-10-15T11:03-03:00"
 REPOCHECKER_VERSION=__version__
 
+import time
 import json
 import logging
 
@@ -102,6 +103,9 @@ Thank you!
             urlfetch.make_fetch_call(rpc, url, headers=headers)
 
             repos[repo] = rpc
+
+            # Wait 0.1 seconds to avoid GitHub abuse triggers
+#            time.sleep(0.1)
 
         for repo in repos:
             rpc = repos[repo]

@@ -9,9 +9,10 @@
 __author__ = '@tucotuco'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "WatchChecker.py 2018-10-14T20:55-03:00"
+__version__ = "WatchChecker.py 2018-10-15T10:46-03:00"
 WATCHCHECKER_VERSION=__version__
 
+import time
 import json
 import logging
 
@@ -36,7 +37,7 @@ class WatchChecker(webapp2.RequestHandler):
 
         s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
         s += '\nChecking which GitHub repositories in Carto are not being watched '
-        s += 'by a given GitHub user.'
+        s += 'by GitHub user %s.' % watcher
         logging.info(s)
 
         self.failed_repos = []
@@ -47,39 +48,44 @@ class WatchChecker(webapp2.RequestHandler):
         }
 
         if len(self.failed_repos) > 0:
-            res['failed_repos'] = self.failed_repos
-            res['result'] = "error"
             s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
-            s += '\nThere repositories not being watched.'
-            logging.error(s)
+            s += '\nThere are %s repositories ' % len(self.failed_repos)
+            s += 'not being watched by %s.' % watcher
+            logging.warning(s)
+            res['message'] = s
+            res['unwatched_repos'] = self.failed_repos
+            res['repo_count']=len(self.failed_repos)
+            res['result'] = "warning"
 
-            error_msg = "\n".join([", ".join(x) for x in self.failed_repos])
-            mail.send_mail(
-                sender=EMAIL_SENDER,
-                to=EMAIL_ADMINS,
-                subject="Resource watcher found unwatched repos",
-                body="""
-Hey there,
-
-This is an automatic message sent by the Watch Checker tool
-to inform you that the script found {0} name combinations of github_orgname and
-github_reponame in the VertNet Carto resource_staging table that are not being 
-watched on GitHub by {1}:
-
-{2}
-
-Please, watch the repositories in GitHub and then go to 
-{3} to restart the process.
-
-Thank you!
-""".format(len(self.failed_repos), self.watcher, error_msg, "http://%s/" % MODULE))
+#             error_msg = "\n".join([", ".join(x) for x in self.failed_repos])
+#             mail.send_mail(
+#                 sender=EMAIL_SENDER,
+#                 to=EMAIL_ADMINS,
+#                 subject="Resource watcher found unwatched repos",
+#                 body="""
+# Hey there,
+# 
+# This is an automatic message sent by the Watch Checker tool
+# to inform you that the script found {0} name combinations of github_orgname and
+# github_reponame in the VertNet Carto resource_staging table that are not being 
+# watched on GitHub by {1}:
+# 
+# {2}
+# 
+# Please, watch the repositories in GitHub and then go to 
+# {3} to restart the process.
+# 
+# Thank you!
+# """.format(len(self.failed_repos), self.watcher, error_msg, "http://%s/" % MODULE))
 
         else:
-            res['result'] = "success"
             s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
             s += '\nThe repository watch checker was successful '
             s += '- no unwatched repositories found.'
             logging.info(s)
+
+            res['result'] = "success"
+            res['message'] = s
 
         self.response.write(json.dumps(res))
         return
@@ -112,6 +118,9 @@ Thank you!
 
             repos[repo] = rpc
 
+            # Wait 0.1 second to avoid GitHub abuse triggers
+            time.sleep(0.1)
+
         # temporarily hard code the watcher to look for
         for repo in repos:
             rpc = repos[repo]
@@ -122,8 +131,19 @@ Thank you!
             logging.info(s)
             watcher_list = [x['login'] for x in content]
             if watcher_list is None or self.watcher not in watcher_list:
-                self.failed_repos.append(repo)
-
+                orgname = repo[0]
+                reponame = repo[1]
+                if orgname is None and reponame is None:
+                    self.failed_repos.append(repo)
+                else:
+                    s = 'http://github.com/'
+                    if orgname is not None:
+                        s += '%s' % orgname
+                    s += '/'
+                    if reponame is not None:
+                        s += '%s' % reponame
+                    s += '/'
+                    self.failed_repos.append(s)
         return
 
     def get_all_repos(self):

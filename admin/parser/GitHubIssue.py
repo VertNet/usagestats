@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubIssue.py 2018-10-14T18:52-03:00"
+__version__ = "GitHubIssue.py 2018-10-15T00:18-03:00"
 
 import time
 import json
@@ -100,7 +100,7 @@ class GitHubIssue(webapp2.RequestHandler):
         reports_query = reports_q
 
         s =  "Version: %s\n" % __version__
-        s += "Found %d Reports to send issue" % reports_query.count()
+        s += "Found %d Reports to send issues for." % reports_query.count()
         logging.info(s)
 
         # Get cursor from request, if any
@@ -123,6 +123,10 @@ class GitHubIssue(webapp2.RequestHandler):
             datasets=[]
             # or until no more reports left
             while more is True:
+
+                s =  "Version: %s\n" % __version__
+                s += "Issuing query: %s" % reports_query
+                logging.info(s)
 
                 # Get next (or first) round of results
                 report, new_cursor, more = reports_query.fetch_page(
@@ -151,22 +155,20 @@ class GitHubIssue(webapp2.RequestHandler):
             period_entity.status = "done"
             mail.send_mail(
                 sender=EMAIL_SENDER,
-                to=EMAIL_RECIPIENT,
+                to=EMAIL_ADMINS,
                 subject="Usage reports for period %s" % self.period,
                 body="""
 Hey there!
 
-Just a brief note to let you know the GitHubIssue process for period %s stats has 
-successfully finished. Reports have been stored in their respective GitHub
-repositories and issues have been created. The full package.
+Just a note to let you know the GitHubIssue process for period %s 
+stats has successfully finished. Reports have been stored in their 
+respective GitHub repositories and issues have been created. 
 
 Issues submitted for datasets:
 %s
 
-Congrats!
-
 Code version: %s
-""" % (self.period, __version__, datasets) )
+""" % (self.period, datasets, __version__) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
@@ -225,7 +227,7 @@ Code version: %s
                 "message": "Missing dataset in datastore."
                            " Please run /setup_datasets to fix",
                 "data": {
-                    "missing_dataset_key": dataset_key
+                    "missing_dataset_key": gbifdatasetid
                 }
             }
             s =  "Version: %s\n" % __version__
