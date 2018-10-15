@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "Status.py 2018-10-12T10:34-03:00"
+__version__ = "Status.py 2018-10-15T20:17-03:00"
 
 import json
 from google.appengine.api.modules import modules
@@ -79,6 +79,30 @@ class Status(webapp2.RequestHandler):
             resp['Report periods'].append({'List of periods in progress': [x.period.strftime("%Y-%m") for x in periods_progress.fetch()]})
         if num_periods_failed > 0:
             resp['Report periods'].append({'List of periods failed': [x.period.strftime("%Y-%m") for x in periods_failed.fetch()]})
+
+        headers = {
+            'User-Agent': 'VertNet',
+            'Accept': 'application/vnd.github.v3+json',
+            'Authorization': 'token {0}'.format(apikey('ghb'))
+        }
+
+        # API URL https://api.github.com/rate-limit
+        rpc = urlfetch.create_rpc()
+        url = '/'.join([GH_URL, 'users', 'VertNet'])
+        urlfetch.set_default_fetch_deadline(60)
+        urlfetch.make_fetch_call(rpc, url, headers=headers)
+
+        h = rpc.get_result().headers
+        u = rpc.get_result().content
+        resp['url'] = url
+        user = {}
+        user['content']=json.loads(u)
+        timefloat = float(h['x-ratelimit-reset'])
+        expires = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timefloat))
+        user['x-ratelimit-limit'] = h['x-ratelimit-limit']
+        user['x-ratelimit-remaining'] = h['x-ratelimit-remaining']
+        user['x-ratelimit-reset'] = expires
+        resp['user'] = user
 
         self.response.headers['content-type'] = "application/json"
         self.response.write(json.dumps(resp))

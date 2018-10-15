@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-15T13:18-03:00"
+__version__ = "GitHubStore.py 2018-10-15T18:37-03:00"
 
 import time
 import base64
@@ -36,7 +36,7 @@ class GitHubStore(webapp2.RequestHandler):
 
         # Try to get period from the request in case GitHubStore was called directly
         try:
-            self.period = self.request.get("period", None)
+            self.period = self.request.get("period").lower()
             self.params_from_request = True
             s =  "Version: %s\n" % __version__
             s += "Period %s determined from request: %s" % (self.period, self.request)
@@ -52,25 +52,6 @@ class GitHubStore(webapp2.RequestHandler):
             s =  "Version: %s\n" % __version__
             s += "Period %s determined from memcache: %s" % (self.period, params)
             logging.info(s)
-            
-
-        # Get parameters from memcache
-#         memcache_keys = ["period", "testing", "github_issue", "gbifdatasetid"]
-#         params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
-# 
-#         s =  "Version: %s\n" % __version__
-#         s += "Process started with memcache parameters: %s" % params
-#         logging.info(s)
-# 
-#         # Try to get 'params' from memcache
-#         try:
-#             self.period = params['period']
-#         # If not in memcache (i.e., if called directly), get from request
-#         except KeyError:
-#             self.period = self.request.get("period", None)
-#             s =  "Version: %s\n" % __version__
-#             s += "Period %s determined from request: %s" % (self.period, self.request)
-#             logging.info(s)
 
         # If still not there, halt
         if not self.period:
@@ -258,7 +239,7 @@ Reports (%d) stored for datasets:
 %s
 
 Code version: %s
-""" % (self.period, __version__, len(datasets), datasets) )
+""" % (self.period, len(datasets), datasets, __version__ ) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
@@ -275,7 +256,7 @@ Code version: %s
                           params={"cursor": cursor.urlsafe()},
                           queue_name=QUEUENAME)
             s =  "Version: %s\n" % __version__
-            s += "Caught a DeadlineExceededError. Relaunching"
+            s += "Caught a DeadlineExceededError. Relaunching."
             logging.info(s)
 
             resp = {
@@ -462,7 +443,7 @@ Code version: %s
         # Store updated version of Report entity
         report_entity.put()
 
-        # Wait 2 seconds to avoid GitHub abuse triggers
+        # Wait 2 seconds to avoid GitHub abuse triggers. 1 isn't sufficient.
         time.sleep(2)
 
         return
