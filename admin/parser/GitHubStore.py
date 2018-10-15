@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-15T00:19-03:00"
+__version__ = "GitHubStore.py 2018-10-15T13:18-03:00"
 
 import time
 import base64
@@ -30,16 +30,47 @@ class GitHubStore(webapp2.RequestHandler):
     """Store each report in its corresponding GitHub repository."""
     def post(self):
 
-        # Get parameters from memcache
-        memcache_keys = ["period", "testing", "github_issue", "gbifdatasetid"]
-        params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
+        # Create instance variable to track if parameters came from a direct request
+        # Or if they came through memcache
+        self.params_from_request = None
 
-        # Try to get 'params' from memcache
+        # Try to get period from the request in case GitHubStore was called directly
         try:
-            self.period = params['period']
-        # If not in memcache (i.e., if called directly), get from request
-        except KeyError:
             self.period = self.request.get("period", None)
+            self.params_from_request = True
+            s =  "Version: %s\n" % __version__
+            s += "Period %s determined from request: %s" % (self.period, self.request)
+            logging.info(s)
+            
+        # If not in request, try to get parameters from memcache in case GiThubStore was
+        # called from a previous task.
+        except Exception:
+            memcache_keys = ['period', 'testing', 'github_issue', 'gbifdatasetid']
+            params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
+            self.period = params['period']
+            self.params_from_request = False
+            s =  "Version: %s\n" % __version__
+            s += "Period %s determined from memcache: %s" % (self.period, params)
+            logging.info(s)
+            
+
+        # Get parameters from memcache
+#         memcache_keys = ["period", "testing", "github_issue", "gbifdatasetid"]
+#         params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
+# 
+#         s =  "Version: %s\n" % __version__
+#         s += "Process started with memcache parameters: %s" % params
+#         logging.info(s)
+# 
+#         # Try to get 'params' from memcache
+#         try:
+#             self.period = params['period']
+#         # If not in memcache (i.e., if called directly), get from request
+#         except KeyError:
+#             self.period = self.request.get("period", None)
+#             s =  "Version: %s\n" % __version__
+#             s += "Period %s determined from request: %s" % (self.period, self.request)
+#             logging.info(s)
 
         # If still not there, halt
         if not self.period:
@@ -53,8 +84,6 @@ class GitHubStore(webapp2.RequestHandler):
             logging.error(s)
             self.response.write(json.dumps(resp)+"\n")
             return
-        else:
-            memcache.set("usagestats_parser_period", self.period)
 
         # If Period not already stored, halt
         period_key = ndb.Key("Period", self.period)
@@ -72,65 +101,88 @@ class GitHubStore(webapp2.RequestHandler):
             self.response.write(json.dumps(resp)+"\n")
             return
 
-        # Try to get 'testing' from memcache
-        try:
-            self.testing = params['testing']
-        # If not in memcache (i.e., if called directly), get from request
-        except KeyError:
-            self.testing = self.request.get('testing').lower() == 'true'
+        # Get the remaining parameters based on the parameter source
+        if self.params_from_request == True: 
+            # Get parameters from request
 
-        # Try to get 'github_issue' from memcache
-        try:
-            self.github_issue = params['github_issue']
-        # If not in memcache (i.e., if called directly), get from request
-        except KeyError:
-            self.github_issue = self.request.get('github_issue').lower() == 'true'
+            # 'testing' parameter
+            try:
+                self.testing = self.request.get('testing').lower() == 'true'
+            except Exception:
+                # default value for 'testing' if not provided is False
+                self.testing = False
 
-        # Try to get 'gbifdatasetid' from memcache
-        try:
-            self.gbifdatasetid = params['gbifdatasetid']
-        # If not in memcache (i.e., if called directly), get from request
-        except KeyError:
-            datasetid = self.request.get('gbifdatasetid')
-            if datasetid is not None:
+            # 'github_issue' parameter
+            try:
+                self.github_issue = self.request.get('github_issue').lower() == 'true'
+            except Exception:
+                # default value for 'github_issue' if not provided is False
+                self.github_issue = False
+
+            # 'gbifdatasetid' parameter
+            try:
                 self.gbifdatasetid = self.request.get('gbifdatasetid').lower()
-            else:
+            except Exception:
+                # default value for 'gbifdatasetid' if not provided is None
                 self.gbifdatasetid = None
 
-        # Prepare list of reports to store
-        s =  "Version: %s\n" % __version__
-        s += "Getting list of reports to store"
-        logging.info(s)
+        else:
+            # Get parameters from memcache
 
+            # 'testing' parameter
+            try:
+                self.testing = params['testing']
+            except KeyError:
+                # default value for 'testing' if not provided is False
+                self.testing = False
+
+            # 'github_issue' parameter
+            try:
+                self.github_issue = params['github_issue']
+            except KeyError:
+                # default value for 'github_issue' if not provided is False
+                self.github_issue = False
+
+            # 'gbifdatasetid' parameter
+            try:
+                self.gbifdatasetid = params['gbifdatasetid']
+            except KeyError:
+                # default value for 'github_issue' if not provided is None
+                self.github_issue = None
+
+        # Set the parameters in memcache for child tasks to use
+        memcache.set("usagestats_parser_period", self.period)
+        memcache.set("usagestats_parser_testing", self.testing)
+        memcache.set("usagestats_parser_github_issue", self.github_issue)
+        memcache.set("usagestats_parser_gbifdatasetid", self.gbifdatasetid)
+
+        # Prepare list of reports to store
         # Base query
         reports_q = Report.query()
 
         # Only Reports for current Period
         reports_q = reports_q.filter(Report.reported_period == period_key)
 
-        # Only those with 'stored' property set to False
+        # Only Reports with 'stored' property set to False
         reports_q = reports_q.filter(Report.stored == False)
 
-        # And if there is a gbifdatasetid, filter on that
+        # And if there is a gbifdatasetid, filter on that too
         if self.gbifdatasetid is not None and len(self.gbifdatasetid) > 0:
             dataset_key = ndb.Key("Dataset", self.gbifdatasetid)
             if dataset_key is None:
                 s =  "Version: %s\n" % __version__
                 s += "gbifdatasetid %s not found in data store." % self.gbifdatasetid
-                logging.info(s)
+                logging.error(s)
                 return
             else:
-                s =  "Version: %s\n" % __version__
-                s += "gbifdatasetid %s " % self.gbifdatasetid
-                s += "added to query:\n%s" % reports_q
-                logging.info(s)
                 reports_q = reports_q.filter(Report.reported_resource == dataset_key)
 
         # Store final query
         reports_query = reports_q
 
         s =  "Version: %s\n" % __version__
-        s += "Found %d Reports to store" % reports_query.count()
+        s += "Found %d Reports to store " % reports_query.count()
+        s += "from query %s" % reports_query
         logging.info(s)
 
         # Get cursor from request, if any
@@ -149,11 +201,11 @@ class GitHubStore(webapp2.RequestHandler):
             more = True
 
         # Loop until DeadlineExceededError
+        # or until there are no more reports left to store
         try:
+            # Keep track of dataset for which Reports have been stored in this run
             datasets = []
-            # or until no more reports left to store
             while more is True:
-
                 s =  "Version: %s\n" % __version__
                 s += "Issuing query: %s" % reports_query
                 logging.info(s)
@@ -174,7 +226,7 @@ class GitHubStore(webapp2.RequestHandler):
                     cursor = new_cursor
 
             s =  "Version: %s\n" % __version__
-            s += "Finished storing all reports"
+            s += "Finished storing all %d reports" % len(datasets)
             logging.info(s)
 
             resp = {
@@ -202,11 +254,11 @@ Just a note to let you know the GitHubStore process for the period %s
 has  successfully finished. Reports have been stored in their respective 
 GitHub repositories.
 
-Reports stored for datasets:
+Reports (%d) stored for datasets:
 %s
 
 Code version: %s
-""" % (self.period, __version__, datasets) )
+""" % (self.period, __version__, len(datasets), datasets) )
 
             # In any case, store period data, show message and finish
             period_entity.put()
@@ -243,10 +295,6 @@ Code version: %s
         """."""
 
         report_key = report_entity.key
-        s =  "Version: %s\n" % __version__
-        s += "Ready to store %s" % report_key.id()
-        logging.info(s)
-
         gbifdatasetid = report_entity.reported_resource.id()
         s =  "Version: %s\n" % __version__
         s += "Storing report for dataset %s" % gbifdatasetid
@@ -262,8 +310,8 @@ Code version: %s
             self.error(500)
             resp = {
                 "status": "error",
-                "message": "Missing dataset in datastore."
-                           " Please run /setup_datasets to fix",
+                "message": "Missing dataset in datastore. Please run /setup_datasets "
+                           "or remove associated Period entity from data store to fix.",
                 "data": {
                     "missing_dataset_key": gbifdatasetid
                 }
