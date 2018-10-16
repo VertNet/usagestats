@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "DatasetsSetup.py 2018-10-09T15:39-03:00"
-DATASETSSETUP_VERSION=__version__
+__version__ = "DatasetsSetup.py 2018-10-15T21:57-03:00"
 
 import json
 from google.appengine.ext import ndb
@@ -39,6 +38,7 @@ class DatasetsSetup(webapp2.RequestHandler):
 
         result = {
             "datasets processed": len(keys),
+            "message": "success"
         }
 
         self.response.write(json.dumps(result))

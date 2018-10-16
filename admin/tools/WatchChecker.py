@@ -9,8 +9,7 @@
 __author__ = '@tucotuco'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "WatchChecker.py 2018-10-15T10:46-03:00"
-WATCHCHECKER_VERSION=__version__
+__version__ = "WatchChecker.py 2018-10-15T22:40-03:00"
 
 import time
 import json
@@ -29,13 +28,13 @@ class WatchChecker(webapp2.RequestHandler):
     def get(self, watcher):
         self.response.headers['Content-Type'] = 'application/json'
         if watcher is None or len(watcher) == 0:
-            s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nNo GitHub user name provided as watcher to check.'
             logging.info(s)
             watcher = 'tucotuco'
         self.watcher = watcher
 
-        s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+        s = 'Version: %s' % __version__
         s += '\nChecking which GitHub repositories in Carto are not being watched '
         s += 'by GitHub user %s.' % watcher
         logging.info(s)
@@ -48,7 +47,7 @@ class WatchChecker(webapp2.RequestHandler):
         }
 
         if len(self.failed_repos) > 0:
-            s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nThere are %s repositories ' % len(self.failed_repos)
             s += 'not being watched by %s.' % watcher
             logging.warning(s)
@@ -56,30 +55,8 @@ class WatchChecker(webapp2.RequestHandler):
             res['unwatched_repos'] = self.failed_repos
             res['repo_count']=len(self.failed_repos)
             res['result'] = "warning"
-
-#             error_msg = "\n".join([", ".join(x) for x in self.failed_repos])
-#             mail.send_mail(
-#                 sender=EMAIL_SENDER,
-#                 to=EMAIL_ADMINS,
-#                 subject="Resource watcher found unwatched repos",
-#                 body="""
-# Hey there,
-# 
-# This is an automatic message sent by the Watch Checker tool
-# to inform you that the script found {0} name combinations of github_orgname and
-# github_reponame in the VertNet Carto resource_staging table that are not being 
-# watched on GitHub by {1}:
-# 
-# {2}
-# 
-# Please, watch the repositories in GitHub and then go to 
-# {3} to restart the process.
-# 
-# Thank you!
-# """.format(len(self.failed_repos), self.watcher, error_msg, "http://%s/" % MODULE))
-
         else:
-            s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nThe repository watch checker was successful '
             s += '- no unwatched repositories found.'
             logging.info(s)
@@ -126,7 +103,7 @@ class WatchChecker(webapp2.RequestHandler):
             rpc = repos[repo]
             result = rpc.get_result()
             content = json.loads(result.content)
-            s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nGot {0} watchers for {1}'.format(len(content), repo[0])
             logging.info(s)
             watcher_list = [x['login'] for x in content]
@@ -153,7 +130,7 @@ class WatchChecker(webapp2.RequestHandler):
                  where ipt is true and networks like '%VertNet%';"
 
         all_repos = carto_query(query)
-        s = 'WatchChecker Version: %s' % WATCHCHECKER_VERSION
+        s = 'Version: %s' % __version__
         s += '\nGot {0} repos currently in Carto'.format(len(all_repos))
         logging.info(s)
 

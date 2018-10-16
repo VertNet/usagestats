@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "util.py 2018-10-11T12:47-03:00"
-UTIL_VERSION=__version__
+__version__ = "util.py 2018-10-15T23:19-03:00"
 
 from datetime import datetime
 import time

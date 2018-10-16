@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "DatasetViewer.py 2018-10-09T16:08-03:00"
-DATASETVIWER_VERSION=__version__
+__version__ = "DatasetViewer.py 2018-10-15T23:17-03:00"
 
 from google.appengine.ext import ndb
 import webapp2

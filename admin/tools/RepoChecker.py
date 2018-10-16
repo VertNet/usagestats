@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "RepoChecker.py 2018-10-15T11:03-03:00"
-REPOCHECKER_VERSION=__version__
+__version__ = "RepoChecker.py 2018-10-15T22:38-03:00"
 
 import time
 import json
@@ -29,7 +28,7 @@ class RepoChecker(webapp2.RequestHandler):
     def get(self):
         self.response.headers['Content-Type'] = 'application/json'
 
-        s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+        s = 'Version: %s' % __version__
         s += '\nChecking consistency of repository names between Carto and GitHub.'
         logging.info(s)
 
@@ -41,11 +40,12 @@ class RepoChecker(webapp2.RequestHandler):
         }
 
         if len(self.failed_repos) > 0:
-            res['failed_repos'] = self.failed_repos
-            res['result'] = "error"
-            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nThere were issues in the repository name matching.'
             logging.error(s)
+            res['failed_repos'] = self.failed_repos
+            res['result'] = "error"
+            res['message'] = s
 
             error_msg = "\n".join([", ".join(x) for x in self.failed_repos])
             mail.send_mail(
@@ -70,10 +70,11 @@ Thank you!
 """.format(len(self.failed_repos), error_msg, "http://%s/" % MODULE))
 
         else:
-            res['result'] = "success"
-            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nThe repository consistency check was successful - no errors found.'
             logging.info(s)
+            res['result'] = 'success'
+            res['message'] = s
 
         self.response.write(json.dumps(res))
         return
@@ -104,14 +105,11 @@ Thank you!
 
             repos[repo] = rpc
 
-            # Wait 0.1 seconds to avoid GitHub abuse triggers
-#            time.sleep(0.1)
-
         for repo in repos:
             rpc = repos[repo]
             result = rpc.get_result()
             content = json.loads(result.content)
-            s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+            s = 'Version: %s' % __version__
             s += '\nGot {0} repos for {1}'.format(len(content), repo[0])
             logging.info(s)
             repo_list = [x['name'] for x in content]
@@ -127,7 +125,7 @@ Thank you!
                  where ipt is true and networks like '%VertNet%';"
 
         all_repos = carto_query(query)
-        s = 'REPOCHECKER Version: %s' % REPOCHECKER_VERSION
+        s = 'Version: %s' % __version__
         s += '\nGot {0} repos currently in Carto'.format(len(all_repos))
         logging.info(s)
 

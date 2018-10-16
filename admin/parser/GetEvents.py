@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GetEvents.py 2018-10-11T12:45-03:00"
-GETEVENTS_VERSION=__version__
+__version__ = "GetEvents.py 2018-10-15T23:16-03:00"
 
 import json
 import logging
@@ -118,8 +117,7 @@ class GetEvents(webapp2.RequestHandler):
         # if, by mistake, none is True...
         else:
             # ... call 'process_events' and move on
-            taskqueue.add(url=URI_PROCESS_EVENTS,
-                          queue_name=QUEUENAME)
+            taskqueue.add(url=URI_PROCESS_EVENTS, queue_name=QUEUENAME)
             return
 
         # Get events
@@ -141,6 +139,7 @@ class GetEvents(webapp2.RequestHandler):
         s =  "Version: %s\n" % __version__
         s += "Storing %d resources" % len(self.resources)
         logging.info(s)
+
         r = []
         for resource in self.resources:
             params = {
@@ -203,11 +202,9 @@ class GetEvents(webapp2.RequestHandler):
             s =  "Version: %s\n" % __version__
             s += "All searches and downloads extracted"
             logging.info(s)
-            taskqueue.add(url=URI_PROCESS_EVENTS,
-                          queue_name=QUEUENAME)
+            taskqueue.add(url=URI_PROCESS_EVENTS, queue_name=QUEUENAME)
         else:
-            taskqueue.add(url=URI_GET_EVENTS,
-                          queue_name=QUEUENAME)
+            taskqueue.add(url=URI_GET_EVENTS, queue_name=QUEUENAME)
 
         return
 
@@ -241,7 +238,7 @@ class GetEvents(webapp2.RequestHandler):
                     "AND results_by_resource !=''" % self.table_name
 
         # Just production portal downloads
-        query += " and client='portal-prod'"
+        query += " AND client='portal-prod'"
 
         # Only restrict time if using default table
         if self.table_name == CDB_TABLE:
@@ -292,8 +289,7 @@ class GetEvents(webapp2.RequestHandler):
         for event in self.data:
 
             # Preformat some fields
-            event_created = datetime.strptime(event['created_at'],
-                                              '%Y-%m-%dT%H:%M:%SZ')
+            event_created = datetime.strptime(event['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             # Keep just YMD
             event_created = event_created.strftime('%Y-%m-%d')
             event_results = json.loads(event['results_by_resource'])
@@ -340,8 +336,12 @@ class GetEvents(webapp2.RequestHandler):
                         'records': event_results[resource]
                     }
                 else:
-                    resources[resource]['query_terms'][event_terms]['times'] += 1
-                    resources[resource]['query_terms'][event_terms]['records'] += event_results[resource]
+                    et = resources[resource]['query_terms'][event_terms]
+                    et['times'] += 1
+                    et['records'] += event_results[resource]
+#                     resources[resource]['query_terms'][event_terms]['times'] += 1
+#                     resources[resource]['query_terms'][event_terms]['records'] \
+#                        += event_results[resource]
 
         # Store 'resources' in class property
         self.resources = resources

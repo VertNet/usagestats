@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "PeriodStatus.py 2018-10-09T15:53-03:00"
-PERIODSTATUS_VERSION=__version__
+__version__ = "PeriodStatus.py 2018-10-15T22:42-03:00"
 
 import json
 from google.appengine.api.modules import modules
@@ -22,14 +21,12 @@ import webapp2
 
 _HOSTNAME = modules.get_hostname(module="tools-usagestats")
 JINJA_ENVIRONMENT = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__),
-                                   'templates')),
+    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
 
 class PeriodStatus(webapp2.RequestHandler):
     def get(self, period):
-
         period_key = ndb.Key("Period", period)
         entity = period_key.get()
         if entity:

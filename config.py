@@ -17,8 +17,7 @@
 __author__ = "Javier Otegui"
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "config.py 2018-10-09T16:02-03:00"
-CONFIG_VERSION=__version__
+__version__ = "config.py 2018-10-15T23:18-03:00"
 
 from google.appengine.api import modules
 

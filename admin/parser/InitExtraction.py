@@ -9,8 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "InitExtraction.py 2018-10-11T12:34-03:00"
-INITEXTRACTION_VERSION=__version__
+__version__ = "InitExtraction.py 2018-10-15T22:47-03:00"
 
 import json
 import logging
@@ -24,8 +23,8 @@ class InitExtraction(webapp2.RequestHandler):
     """Initialize the processing of a Period."""
     def post(self):
         """Parse parameters, call initialization function
-and launch searches and downloads extractions."""
-
+           and launch searches and downloads extractions.
+        """
         # Parse parameters
         err = self.store_parameters()
         if err:
@@ -37,8 +36,7 @@ and launch searches and downloads extractions."""
             return
 
         # Create task for extracting events
-        taskqueue.add(url=URI_GET_EVENTS,
-                      queue_name=QUEUENAME)
+        taskqueue.add(url=URI_GET_EVENTS, queue_name=QUEUENAME)
 
         # Build response
         resp = {
@@ -49,7 +47,6 @@ and launch searches and downloads extractions."""
             }
         }
         self.response.write(json.dumps(resp) + "\n")
-
         return
 
     def store_parameters(self):
@@ -82,8 +79,6 @@ and launch searches and downloads extractions."""
             s =  "Version: %s\n" % __version__
             s += "Call parameters for memcache missing: %s " % missed
             logging.warning(s)
-#            logging.warning("Some call parameters were not added " +
-#                            "to the memcache: {0}".format(missed))
         else:
             s =  "Version: %s\n" % __version__
             s += "Call parameters successfully added to memcache"
@@ -93,7 +88,8 @@ and launch searches and downloads extractions."""
 
     def initialize_extraction(self, period=None, force=None):
         """Check if Period parameter is valid, if the Period entity already exists
-and create a new Period."""
+           and create a new Period.
+        """
         self.response.headers['Content-Type'] = "application/json"
 
         # Check that 'period' is provided
