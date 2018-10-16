@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-15T18:37-03:00"
+__version__ = "GitHubStore.py 2018-10-16T15:14-03:00"
 
 import time
 import base64
@@ -42,7 +42,7 @@ class GitHubStore(webapp2.RequestHandler):
             s += "Period %s determined from request: %s" % (self.period, self.request)
             logging.info(s)
             
-        # If not in request, try to get parameters from memcache in case GiThubStore was
+        # If not in request, try to get parameters from memcache in case GitHubStore was
         # called from a previous task.
         except Exception:
             memcache_keys = ['period', 'testing', 'github_issue', 'gbifdatasetid']
@@ -128,8 +128,8 @@ class GitHubStore(webapp2.RequestHandler):
             try:
                 self.gbifdatasetid = params['gbifdatasetid']
             except KeyError:
-                # default value for 'github_issue' if not provided is None
-                self.github_issue = None
+                # default value for 'gbifdatasetid' if not provided is None
+                self.gbifdatasetid = None
 
         # Set the parameters in memcache for child tasks to use
         memcache.set("usagestats_parser_period", self.period)
@@ -145,11 +145,14 @@ class GitHubStore(webapp2.RequestHandler):
         reports_q = reports_q.filter(Report.reported_period == period_key)
 
         # Only Reports with 'stored' property set to False
-        reports_q = reports_q.filter(Report.stored == False)
+        # Actually, it is fine to attempt to write the report no matter what.
+        # If it is already there strore_report() will catch that.
+#        reports_q = reports_q.filter(Report.stored == False)
 
         # And if there is a gbifdatasetid, filter on that too
         if self.gbifdatasetid is not None and len(self.gbifdatasetid) > 0:
             dataset_key = ndb.Key("Dataset", self.gbifdatasetid)
+
             if dataset_key is None:
                 s =  "Version: %s\n" % __version__
                 s += "gbifdatasetid %s not found in data store." % self.gbifdatasetid
@@ -226,7 +229,7 @@ class GitHubStore(webapp2.RequestHandler):
                 period_entity.status = "done"
                 mail.send_mail(
                     sender=EMAIL_SENDER,
-                    to=EMAIL_ADMINS,
+                    to=EMAIL_RECIPIENT,
                     subject="Usage reports for period %s" % self.period,
                     body="""
 Hey there!
@@ -273,18 +276,14 @@ Code version: %s
         return
 
     def store_report(self, report_entity):
-        """."""
-
-        report_key = report_entity.key
-        gbifdatasetid = report_entity.reported_resource.id()
-        s =  "Version: %s\n" % __version__
-        s += "Storing report for dataset %s" % gbifdatasetid
-        logging.info(s)
+        """Write report file to GitHub."""
 
         # Build variables
         dataset_key = report_entity.reported_resource
         period_key = report_entity.reported_period
         dataset_entity, period_entity = ndb.get_multi([dataset_key, period_key])
+        report_key = report_entity.key
+        gbifdatasetid = report_entity.reported_resource.id()
 
         # Check that dataset exists
         if not dataset_entity:
@@ -325,16 +324,6 @@ Code version: %s
             repo = 'statReports'
             user_agent = 'VertNet'
             key = apikey('ghb')
-#             logging.info("Using testing repositories in jotegui")
-#             org = 'jotegui'
-#             repo = 'statReports'
-#             user_agent = 'jotegui'
-#             key = apikey('jot')
-
-        s =  "Version: %s\n" % __version__
-        s += "Using GitHub repository %s/%s " % (org, repo)
-        s += "as user_agent %s" % user_agent
-        logging.info(s)
 
         # GitHub request headers
         headers = {
@@ -343,102 +332,91 @@ Code version: %s
             "Accept": "application/vnd.github.v3+json"
         }
 
-        # Upload txt report to GitHub, only if not previously stored
-        if report_entity.stored is False:
+        # Load template
+        template = JINJA_ENVIRONMENT.get_template('report.txt')
 
-            # Load template
-            template = JINJA_ENVIRONMENT.get_template('report.txt')
+        # Render template with values from Report
+        content = template.render(
+            dataset=dataset_entity,
+            report=report_entity,
+            period=period_entity
+        )
 
-            # Render template with values from Report
-            content = template.render(
-                dataset=dataset_entity,
-                report=report_entity,
-                period=period_entity
-            )
+        # Build GitHub request parameters: message
+        message = content.split("\n")[1]  # 2nd line of txt report
 
-            # Build GitHub request parameters: message
-            message = content.split("\n")[1]  # 2nd line of txt report
+        # Build GitHub request parameters: committer
+        committer = GH_COMMITTER
 
-            # Build GitHub request parameters: committer
-            committer = GH_COMMITTER
+        # Build GitHub request parameters: content
+        content_enc = base64.b64encode(content.encode('utf-8'))
 
-            # Build GitHub request parameters: content
-            content_enc = base64.b64encode(content.encode('utf-8'))
+        # Build GitHub request parameters
+        json_input = json.dumps({
+            "message": message,
+            "committer": committer,
+            "content": content_enc
+        })
 
-            # Build GitHub request parameters
-            json_input = json.dumps({
-                "message": message,
-                "committer": committer,
-                "content": content_enc
-            })
+        # Build GitHub request URL: path
+        txt_path = "-".join([dataset_entity.icode,
+                            dataset_entity.ccode,
+                            "-".join([self.period[:4], self.period[4:]])])
+        path = "reports/{0}.txt".format(txt_path)
 
-            # Build GitHub request URL: path
-            txt_path = "-".join([dataset_entity.icode,
-                                dataset_entity.ccode,
-                                "-".join([self.period[:4], self.period[4:]])])
-            path = "reports/{0}.txt".format(txt_path)
-            s =  "Version: %s\n" % __version__
-            s += "Path: %s" % path
+        s = "Storing at: %s/%s/%s/%s" % (GH_REPOS, org, repo, path)
+        logging.info(s)
+
+        # Build GitHub request URL
+        request_url = '{0}/{1}/{2}/contents/{3}'.format(GH_REPOS, org, repo, path)
+
+        # Make GitHub call
+        r = urlfetch.fetch(
+            url=request_url,
+            method=urlfetch.PUT,
+            headers=headers,
+            payload=json_input
+        )
+
+        # Check output
+        # HTTP 201 = Success
+        if r.status_code == 201:
+            report_entity.stored = True
+
+            s =  "Report %s sent " % report_key.id()
+            s += "for gbifdatasetid %s to %s " % (gbifdatasetid, path)
             logging.info(s)
 
-            # Build GitHub request URL
-            request_url = '{0}/{1}/{2}/contents/{3}'.format(GH_REPOS, org, repo, path)
-            s =  "Version: %s\n" % __version__
-            s += "Request URL: %s" % request_url
-            logging.info(s)
+        # HTTP 422 = 'SHA' missing, meaning report was already there
+        elif r.status_code == 422:
+            report_entity.stored = True
 
-            # Make GitHub call
-            r = urlfetch.fetch(
-                url=request_url,
-                method=urlfetch.PUT,
-                headers=headers,
-                payload=json_input
-            )
-
-            # Check output
-            # HTTP 201 = Success
-            if r.status_code == 201:
-                s =  "Version: %s\n" % __version__
-                s += "Status: %s. Report %s sent." % (r.status_code, report_key.id())
-                logging.info(s)
-                report_entity.stored = True
-            # HTTP 422 = 'SHA' missing, meaning report was already there
-            elif r.status_code == 422:
-                s =  "Version: %s\n" % __version__
-                s += "Status: %s. " % r.status_code
-                s += "Report %s was already stored, " % report_key.id()
-                s += "but 'stored' property was 'False'. "
-                s += "This call should not have happened.\n"
-                s += "Content: " % r.content
-                logging.error(s)
-                report_entity.stored = True
-            # Other generic problems
-            else:
-                resp = {
-                    "status": "failed",
-                    "message": "Got uncaught error code when uploading"
-                               " report to GitHub. Aborting issue creation.",
-                    "source": "send_to_github",
-                    "data": {
-                        "report_key": report_key,
-                        "period": self.period,
-                        "testing": self.testing,
-                        "error_code": r.status_code,
-                        "error_content": r.content
-                    }
-                }
-                s =  "Version: %s\n" % __version__
-                s += "Response: " % resp
-                logging.error(s)
-                return
-
-        # This 'else' should NEVER happen
-        else:
-            s =  "Version: %s\n" % __version__
-            s += "Report %s was already stored, " % report_key.id()
-            s += "but 'stored' property was 'False'. "
-            s += "This call should not have happened."
+            s =  "Report %s was already stored " % report_key.id()
+            s += "for gbifdatasetid %s at %s " % (gbifdatasetid, path)
             logging.warning(s)
+
+        # Other generic problems
+        else:
+            resp = {
+                "status": "failed",
+                "message": "Got uncaught error code when uploading report to GitHub.",
+                "source": "send_to_github",
+                "data": {
+                    "report_key": report_key,
+                    "period": self.period,
+                    "gbifdatasetid": gbifdatasetid,
+                    "github_issue": self.github_issue,
+                    "testing": self.testing,
+                    "error_code": r.status_code,
+                    "error_content": r.content
+                }
+            }
+
+            s =  "Version: %s\n" % __version__
+            s += "Response: " % resp
+            logging.error(s)
+
+            return
 
         # Store updated version of Report entity
         report_entity.put()

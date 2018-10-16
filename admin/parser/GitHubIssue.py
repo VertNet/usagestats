@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubIssue.py 2018-10-15T18:36-03:00"
+__version__ = "GitHubIssue.py 2018-10-16T13:34-03:00"
 
 import time
 import json
@@ -329,24 +329,31 @@ Code version: %s
         if report_entity.issue_sent is False:
             link_all = "http://%s/reports/%s/" % (MODULE, gbifdatasetid)
             link = "http://%s/reports/%s/%s/" % (MODULE, gbifdatasetid, self.period)
+            link_gh = "https://github.com/%s/%s/tree/master/reports" % (org, repo)
             title = 'Monthly VertNet data use report for %s-%s, resource %s' \
                     % (period_entity.year,
                        period_entity.month,
                        dataset_entity.ccode)
             body = """Your monthly VertNet data use report is ready!
-You can see the HTML rendered version of the reports with this link:
+
+You can see the HTML rendered version of this report at:
 
 {0}
 
 Raw text and JSON-formatted versions of the report are also available for
-download from this link. In addition, a copy of the text version has been
-uploaded to your GitHub repository, under the "Reports" folder. Also, a full
-list of all reports can be accessed here:
+download from this link. 
+
+A copy of the text version has been also beeb uploaded to your GitHub 
+repository under the "reports" folder at:
 
 {1}
 
+A full list of all available reports can be accessed from:
+
+{2}
+
 You can find more information on the reporting system, along with an
-explanation of each metric, here:
+explanation of each metric, at:
 
 http://www.vertnet.org/resources/usagereportingguide.html
 
@@ -354,7 +361,7 @@ Please post any comments or questions to:
 http://www.vertnet.org/feedback/contact.html
 
 Thank you for being a part of VertNet.
-""".format(link, link_all)
+""".format(link, link_gh, link_all)
 
             labels = ['report']
             request_url = '{0}/{1}/{2}/issues'.format(GH_REPOS, org, repo)
