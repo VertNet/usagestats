@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubStore.py 2018-10-16T15:14-03:00"
+__version__ = "GitHubStore.py 2018-10-16T16:04-03:00"
 
 import time
 import base64
@@ -229,7 +229,7 @@ class GitHubStore(webapp2.RequestHandler):
                 period_entity.status = "done"
                 mail.send_mail(
                     sender=EMAIL_SENDER,
-                    to=EMAIL_RECIPIENT,
+                    to=EMAIL_ADMINS,
                     subject="Usage reports for period %s" % self.period,
                     body="""
 Hey there!
