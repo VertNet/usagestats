@@ -9,12 +9,12 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GitHubIssue.py 2018-10-16T13:34-03:00"
+__version__ = "GitHubIssue.py 2018-12-11T14:59-03:00"
 
 import time
 import json
 import logging
-from google.appengine.api import memcache, taskqueue, mail, urlfetch
+from google.appengine.api import taskqueue, mail, urlfetch
 from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 import webapp2
@@ -27,36 +27,37 @@ PAGE_SIZE = 1
 class GitHubIssue(webapp2.RequestHandler):
     """Create an issue for each report in its corresponding GitHub repo."""
     def post(self):
-
         # Create instance variable to track if parameters came from a direct request
-        # Or if they came through memcache
+        # Or if they came through Period entity
         self.params_from_request = None
+        params = None
+
+        s =  "Version: %s\n" % __version__
+        s += "Arguments from POST:"
+        for arg in self.request.arguments():
+            s += '\n%s:%s' % (arg, self.request.get(arg))
+        logging.info(s)
 
         # Try to get period from the request in case GitHubStore was called directly
-        try:
-            # If "period" is not in the request, None will be returned
-            # taking lower() of None will throw an exception, which is the 
-            # desired result here.
-            self.period = self.request.get("period", None).lower()
-            
+        self.period = self.request.get("period", None)
+
+        # If real period not in request, try to get parameters from StatsRun entity 
+        # in case GetEvents was called from a previous task.
+        if self.period is None or len(self.period)==0:
+            run_key = ndb.Key("StatsRun", 5759180434571264)
+            run_entity = run_key.get()
+            self.period = run_entity.period
+            self.params_from_request = False
+            s =  "Version: %s\n" % __version__
+            s += "Period %s determined from StatsRun entity: %s" % (self.period, params)
+            logging.info(s)
+        else:
             self.params_from_request = True
             s =  "Version: %s\n" % __version__
             s += "Period %s determined from request: %s" % (self.period, self.request)
             logging.info(s)
-            
-        # If not in request, try to get parameters from memcache in case GitHubStore was
-        # called from a previous task.
-        except Exception:
-            memcache_keys = ["period", "testing", "gbifdatasetid"]
-            params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
-            self.period = params['period']
-            self.params_from_request = False
-            s =  "Version: %s\n" % __version__
-            s += "Period %s determined from memcache: %s" % (self.period, params)
-            logging.info(s)
 
-        # If still not there, halt
-        if not self.period:
+        if self.period is None or len(self.period)==0:
             self.error(400)
             resp = {
                 "status": "error",
@@ -101,30 +102,18 @@ class GitHubIssue(webapp2.RequestHandler):
             except Exception:
                 # default value for 'gbifdatasetid' if not provided is None
                 self.gbifdatasetid = None
-
         else:
-            # Get parameters from memcache
+            # Get parameters from Period entity
 
             # 'testing' parameter
             try:
-                self.testing = params['testing']
-            except KeyError:
-                # default value for 'testing' if not provided is False
+                self.testing = period_entity.testing
+            except Exception:
                 self.testing = False
 
-            # 'gbifdatasetid' parameter
-            try:
-                self.gbifdatasetid = params['gbifdatasetid']
-            except KeyError:
-                # default value for 'github_issue' if not provided is None
-                self.github_issue = None
+            # 'gbifdatasetid' parameter can't be used when called from another task
 
-        # Set the parameters in memcache for child tasks to use
-        memcache.set("usagestats_parser_period", self.period)
-        memcache.set("usagestats_parser_testing", self.testing)
-        memcache.set("usagestats_parser_gbifdatasetid", self.gbifdatasetid)
-
-        # Prepare list of reports to store
+        # Prepare list of reports to create issues for
         # Base query
         reports_q = Report.query()
 
@@ -307,11 +296,6 @@ Code version: %s
             repo = 'statReports'
             user_agent = 'VertNet'
             key = apikey('ghb')
-#             logging.info("Using testing repositories in jotegui")
-#             org = 'jotegui'
-#             repo = 'statReports'
-#             user_agent = 'jotegui'
-#             key = apikey('jot')
 
         s =  "Version: %s\n" % __version__
         s += "Using GitHub repository %s/%s " % (org, repo)
@@ -326,7 +310,7 @@ Code version: %s
         }
 
         # Issue creation, only if issue not previously created
-        if report_entity.issue_sent is False:
+        if report_entity.issue_sent == False:
             link_all = "http://%s/reports/%s/" % (MODULE, gbifdatasetid)
             link = "http://%s/reports/%s/%s/" % (MODULE, gbifdatasetid, self.period)
             link_gh = "https://github.com/%s/%s/tree/master/reports" % (org, repo)
@@ -343,7 +327,7 @@ You can see the HTML rendered version of this report at:
 Raw text and JSON-formatted versions of the report are also available for
 download from this link. 
 
-A copy of the text version has been also beeb uploaded to your GitHub 
+A copy of the text version has been also been uploaded to your GitHub 
 repository under the "reports" folder at:
 
 {1}

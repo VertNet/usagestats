@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "models.py 2018-10-09T15:44-03:00"
+__version__ = "models.py 2018-12-11T12:55-03:00"
 MODELS_VERSION=__version__
 
 from datetime import datetime
@@ -33,7 +33,6 @@ Ancestor: None
     github_reponame = ndb.StringProperty()
     # Other stuff
     source_url = ndb.StringProperty()
-
 
 class Period(ndb.Model):
     """Identifies an extraction.
@@ -60,6 +59,27 @@ Ancestor: None
     processed_downloads = ndb.IntegerProperty(default=0)
     processed_searches = ndb.IntegerProperty(default=0)
 
+    # Processing properties sdded to replace memcache
+    # Process extraction variables
+    period_parameter = ndb.StringProperty()
+    force = ndb.BooleanProperty()
+    testing = ndb.BooleanProperty()
+    github_store = ndb.BooleanProperty()
+    github_issue = ndb.BooleanProperty()
+    table_name = ndb.StringProperty()
+    # Process tracking variables
+    searches_extracted = ndb.BooleanProperty()
+    downloads_extracted = ndb.BooleanProperty()
+    processed_searches = ndb.IntegerProperty()
+    processed_downloads = ndb.IntegerProperty()
+
+class StatsRun(ndb.Model):
+    """Holds the period information for the stat processing run.
+Key name: VNStats
+Ancestor: None
+"""
+    period = ndb.StringProperty()
+    gbifdatasetid = ndb.StringProperty()
 
 class CartoEntry(ndb.Expando):
     """Identifies an entry of the query_log_master table in Carto.
@@ -82,7 +102,6 @@ Ancestor: Report
     records = ndb.IntegerProperty(default=0)
     times = ndb.IntegerProperty(default=0)
 
-
 class QueryCountry(ndb.Model):
     """
 Key name: query_country
@@ -91,7 +110,6 @@ Ancestor: Report
     query_country = ndb.StringProperty()
     times = ndb.IntegerProperty(default=0)
 
-
 class QueryDate(ndb.Model):
     """
 Key name: query_date
@@ -99,7 +117,6 @@ Ancestor: Report
 """
     query_date = ndb.DateProperty()
     times = ndb.IntegerProperty(default=0)
-
 
 class PastData(ndb.Model):
     searches = ndb.IntegerProperty(default=0)
@@ -110,14 +127,11 @@ class PastData(ndb.Model):
     query_countries = ndb.StructuredProperty(QueryCountry, repeated=True)
     query_dates = ndb.StructuredProperty(QueryDate, repeated=True)
 
-
 class YearData(PastData):
     pass
 
-
 class HistoryData(PastData):
     pass
-
 
 class Download(ndb.Model):
     events = ndb.IntegerProperty(default=0)
@@ -128,7 +142,6 @@ class Download(ndb.Model):
     query_dates = ndb.StructuredProperty(QueryDate, repeated=True)
     # status = ndb.StringProperty(choices=['done', 'in progress', 'failed'])
 
-
 class Search(ndb.Model):
     events = ndb.IntegerProperty(default=0)
     records = ndb.IntegerProperty(default=0)
@@ -136,7 +149,6 @@ class Search(ndb.Model):
     query_countries = ndb.StructuredProperty(QueryCountry, repeated=True)
     query_dates = ndb.StructuredProperty(QueryDate, repeated=True)
     # status = ndb.StringProperty(choices=['done', 'in progress', 'failed'])
-
 
 class Report(ndb.Model):
     """Identifies a Report.
@@ -159,7 +171,6 @@ Ancestor: Period
                                 # self.searches.status == 'done' and
                                 self.issue_sent is True and
                                 self.stored is True)
-
 
 class ReportToProcess(ndb.Model):
     """Identifies a Report to be processed.

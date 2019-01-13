@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "Status.py 2018-10-15T20:17-03:00"
+__version__ = "Status.py 2018-11-01T19:34-03:00"
 
 import json
 from google.appengine.api.modules import modules
@@ -68,10 +68,10 @@ class Status(webapp2.RequestHandler):
         }
 
         if c != d or c == 0:
-            dataset_setup_url = "http://%s/setup_datasets" % _HOSTNAME
+            dataset_setup_url = "http://%s/admin/setup/datasets" % _HOSTNAME
             resp["Datastore integrity"].append({"URL for dataset setup": dataset_setup_url})
         if num_periods > 0:
-            links_to_periods = ["http://%s/status/period/%s" % (_HOSTNAME, x.key.id()) for x in periods.fetch()]
+            links_to_periods = ["http://%s/admin/status/period/%s" % (_HOSTNAME, x.key.id()) for x in periods.fetch()]
             resp["Report periods"].append({"Links to periods": links_to_periods})
         if num_periods_done > 0:
             resp['Report periods'].append({'List of periods done': [x.period.strftime("%Y-%m") for x in periods_done.fetch()]})

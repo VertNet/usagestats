@@ -9,19 +9,19 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "ProcessEvents.py 2018-10-12T10:38-03:00"
+__version__ = "ProcessEvents.py 2018-12-11T11:36-03:00"
 
 import json
 import logging
 from datetime import datetime
-from google.appengine.api import memcache, mail, taskqueue
+from google.appengine.api import mail, taskqueue
 from google.appengine.ext import ndb
 from google.appengine.runtime import DeadlineExceededError
 from google.appengine.datastore.datastore_query import Cursor
 import webapp2
 from models import ReportToProcess
 from models import QueryCountry, QueryDate, QueryTerms
-from models import Report, Search, Download
+from models import Report, Search, Download, StatsRun
 from config import *
 
 PAGE_SIZE = 10
@@ -30,12 +30,58 @@ class ProcessEvents(webapp2.RequestHandler):
     """Process a single resource and create a Report entity."""
     def post(self):
 
-        # Retrieve parameters from memcache and request
-        memcache_keys = ["period", "github_store", "github_issue"]
-        params = memcache.get_multi(memcache_keys, key_prefix="usagestats_parser_")
-        self.period = params['period']
-        self.github_store = params['github_store']
-        self.github_issue = params['github_issue']
+        s =  "Version: %s\n" % __version__
+        s += "Arguments from POST:"
+        for arg in self.request.arguments():
+            s += '\n%s:%s' % (arg, self.request.get(arg))
+        logging.info(s)
+
+        # Try to get period from the request in case GetEvents was called directly
+        try:
+            self.period = self.request.get("period").lower()
+            s =  "Version: %s\n" % __version__
+            s += "Period %s determined from request: %s" % (self.period, self.request)
+            logging.info(s)
+        except Exception:
+            pass
+
+        # If real period not in request, try to get parameters from StatsRun entity 
+        # in case GetEvents was called from a previous task.
+        if self.period is None or len(self.period)==0:
+            run_key = ndb.Key("StatsRun", 5759180434571264)
+            run_entity = run_key.get()
+            self.period = run_entity.period
+
+        if self.period is None or len(self.period)==0:
+            self.error(400)
+            resp = {
+                "status": "error",
+                "message": "Period parameter was not provided."
+            }
+            s =  "Version: %s\n" % __version__
+            s += "%s" % resp
+            logging.error(s)
+            self.response.write(json.dumps(resp)+"\n")
+            return
+
+        # If Period not already stored, halt
+        period_key = ndb.Key("Period", self.period)
+        period_entity = period_key.get()
+        if not period_entity:
+            self.error(400)
+            resp = {
+                "status": "error",
+                "message": "Provided period does not exist in datastore",
+                "data": {
+                    "period": self.period
+                }
+            }
+            logging.error(resp)
+            self.response.write(json.dumps(resp)+"\n")
+            return
+
+        self.github_store = period_entity.github_store
+        self.github_issue = period_entity.github_issue
 
         # Start the loop, until deadline
         try:
@@ -43,14 +89,18 @@ class ProcessEvents(webapp2.RequestHandler):
             # Prepare query for all Reports to process
             query = ReportToProcess.query()
             query = query.order(ReportToProcess.gbifdatasetid)
-            logging.info("ReportToProcess queried")
+            s =  "Version: %s\n" % __version__
+            s += "ReportToProcess queried"
+            logging.info(s)
 
             # Get cursor from request, if any
             cursor_str = self.request.get('cursor', None)
             cursor = None
             if cursor_str:
                 cursor = Cursor(urlsafe=cursor_str)
-            logging.info("Cursor built: %s" % cursor)
+            s =  "Version: %s\n" % __version__
+            s += "Cursor built: %s" % cursor
+            logging.info(s)
 
             # Initialize loop
             more = True
@@ -63,7 +113,9 @@ class ProcessEvents(webapp2.RequestHandler):
                 results, new_cursor, more = query.fetch_page(
                     PAGE_SIZE, start_cursor=cursor
                 )
-                logging.info("Got %d results" % len(results))
+                s =  "Version: %s\n" % __version__
+                s += "Got %d results" % len(results)
+                logging.info(s)
 
                 # Process and store transactionally
                 self.process_and_store(results)
@@ -71,25 +123,22 @@ class ProcessEvents(webapp2.RequestHandler):
                 # Restart with new cursor (if any)
                 if more is True:
                     cursor = new_cursor
-                    logging.info("New cursor: %s" % cursor.urlsafe())
+                    s =  "Version: %s\n" % __version__
+                    s += "New cursor: %s" % cursor.urlsafe()
+                    logging.info(s)
 
-            logging.info("Finished processing reports")
+            s =  "Version: %s\n" % __version__
+            s += "Finished processing reports"
+            logging.info(s)
 
-            # Store memcache'd counts
-            counts = memcache.get_multi([
-                "processed_searches",
-                "processed_downloads"
-                ], key_prefix="usagestats_parser_")
             period_entity = ndb.Key("Period", self.period).get()
-            period_entity.processed_searches = counts['processed_searches']
-            period_entity.processed_downloads = counts['processed_downloads']
 
             resp = {
                 "status": "success",
                 "message": "Successfully finished processing all reports",
                 "data": {
-                    "processed_searches": counts['processed_searches'],
-                    "processed_downloads": counts['processed_downloads']
+                    "processed_searches": period_entity.processed_searches,
+                    "processed_downloads": period_entity.processed_downloads
                 }
             }
 
@@ -116,13 +165,13 @@ class ProcessEvents(webapp2.RequestHandler):
                     body="""
 Hey there!
 
-Just a brief note to let you know the extraction of %s stats has successfully
-finished, with no GitHub processes launched.
+Just a brief note to let you know the extraction of %s stats has 
+successfully finished, with no GitHub processes launched.
 
 Congrats!
 """ % self.period)
 
-            # In any case, store the counts, show message and finish
+            # In any case, store the status, show message and finish
             period_entity.put()
             logging.info(resp)
             self.response.write(json.dumps(resp)+"\n")
@@ -135,7 +184,9 @@ Congrats!
             taskqueue.add(url=URI_PROCESS_EVENTS,
                           params={"cursor": cursor.urlsafe()},
                           queue_name=QUEUENAME)
-            logging.info("Caught a DeadlineExceededError. Relaunching")
+            s =  "Version: %s\n" % __version__
+            s += "Caught a DeadlineExceededError. Relaunching"
+            logging.warning(s)
 
             resp = {
                 "status": "in progress",
@@ -167,7 +218,13 @@ reports that are stored even when the DeadlineExceededError is raised.
         ndb.put_multi(reports_to_store)
 
         # Update count in period
-        memcache.offset_multi(counts, key_prefix="usagestats_parser_")
+        period_entity = ndb.Key("Period", self.period).get()
+        period_entity.processed_searches=\
+          period_entity.processed_searches+counts['processed_searches']
+        period_entity.processed_downloads=\
+          period_entity.processed_downloads+counts['processed_downloads']
+
+        period_entity.put()
 
         # Batch-delete the ReportsToProcess entities
         ndb.delete_multi(keys_to_delete)
@@ -197,7 +254,9 @@ reports that are stored even when the DeadlineExceededError is raised.
         gbifdatasetid = resource_entry.gbifdatasetid
         event = resource_entry.resource
 
-        logging.info("Processing %s" % gbifdatasetid)
+        s =  "Version: %s\n" % __version__
+        s += "Processing %s" % gbifdatasetid
+        logging.info(s)
 
         # Extract useful information
         number_of_records = event['records']
@@ -248,7 +307,9 @@ reports that are stored even when the DeadlineExceededError is raised.
             number_of_events = sum_query_countries
 
         # Get existing or create new Report entity
-        logging.info("Retrieving existing report or creating new one")
+        s =  "Version: %s\n" % __version__
+        s += "Retrieving existing report or creating new one"
+        logging.info(s)
         report = Report.get_or_insert(
             report_id,
             parent=period_key,
@@ -276,7 +337,9 @@ reports that are stored even when the DeadlineExceededError is raised.
         )
 
         # Populate event data
-        logging.info("Storing %s data" % t)
+        s =  "Version: %s\n" % __version__
+        s += "Storing %s data" % t
+        logging.info(s)
 
         if t == 'search':
             report.searches.records = number_of_records

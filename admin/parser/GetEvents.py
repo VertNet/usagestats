@@ -9,15 +9,15 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "GetEvents.py 2018-10-15T23:16-03:00"
+__version__ = "GetEvents.py 2018-12-11T13:58-03:00"
 
 import json
 import logging
 from datetime import datetime, timedelta
 from google.appengine.ext import ndb
-from google.appengine.api import memcache, taskqueue
+from google.appengine.api import taskqueue
 import webapp2
-from models import ReportToProcess
+from models import ReportToProcess, StatsRun
 from util import ApiQueryMaxRetriesExceededError
 from util import add_time_limit, carto_query, geonames_query
 from config import *
@@ -26,82 +26,128 @@ class GetEvents(webapp2.RequestHandler):
     """Download and prepare log events from logging tables."""
     def post(self):
 
-        # Retrieve parameters from memcache and request
-        params = memcache.get_multi([
-            "period",
-            "table_name",
-            "searches_extracted",
-            "downloads_extracted"
-        ], key_prefix="usagestats_parser_")
+        # Create instance variable to track if parameters came from a direct request
+        # Or if they came through Period entity
+        self.params_from_request = None
+        params = None
 
-        # If GetEvents is called directly, no 'period' will be found
-        # Then, get period from request
-        try:
-            self.period = params['period']
-        except KeyError:
+        s =  "Version: %s\n" % __version__
+        s += "Arguments from POST:"
+        for arg in self.request.arguments():
+            s += '\n%s:%s' % (arg, self.request.get(arg))
+        logging.info(s)
+
+        # Try to get period from the request in case GetEvents was called directly
+        self.period = self.request.get("period", None)
+
+        # If real period not in request, try to get parameters from StatsRun entity 
+        # in case GetEvents was called from a previous task.
+        if self.period is None or len(self.period)==0:
+            run_key = ndb.Key("StatsRun", 5759180434571264)
+            run_entity = run_key.get()
+            self.period = run_entity.period
+            self.params_from_request = False
             s =  "Version: %s\n" % __version__
-            s += "Unable to extract 'period' from params: %s" % params
+            s += "Period %s determined from StatsRun entity: %s" % (self.period, params)
+            logging.info(s)
+        else:
+            self.params_from_request = True
+            s =  "Version: %s\n" % __version__
+            s += "Period %s determined from request: %s" % (self.period, self.request)
             logging.info(s)
 
-        if self.period is None:
-            try:
-                self.period = self.request.get('period')
-            except KeyError:
-                s =  "Version: %s\n" % __version__
-                s += "Aborting GetEvents. "
-                s += "Unable to extract 'period' from request: %s" % request
-                logging.info(s)
-                return
-
-        try:
-            self.table_name = params['table_name']
-        except KeyError:
+        if self.period is None or len(self.period)==0:
+            self.error(400)
+            resp = {
+                "status": "error",
+                "message": "Period parameter was not provided."
+            }
             s =  "Version: %s\n" % __version__
-            s += "Unable to extract 'table_name' from params: %s" % params
-            logging.info(s)
+            s += "%s" % resp
+            logging.error(s)
+            self.response.write(json.dumps(resp)+"\n")
+            return
 
-        if self.table_name is None:
+        # If Period not already stored, halt
+        period_key = ndb.Key("Period", self.period)
+        period_entity = period_key.get()
+        if not period_entity:
+            self.error(400)
+            resp = {
+                "status": "error",
+                "message": "Provided period does not exist in datastore",
+                "data": {
+                    "period": self.period
+                }
+            }
+            logging.error(resp)
+            self.response.write(json.dumps(resp)+"\n")
+            return
+
+        # Get the remaining parameters based on the parameter source
+        if self.params_from_request == True: 
+            # Get parameters from request
+
+            # 'table_name' parameter
             try:
                 self.table_name = self.request.get('table_name')
+                if self.table_name is None or len(self.table_name)==0:
+                    self.table_name = CDB_TABLE
             except KeyError:
-                s =  "Version: %s\n" % __version__
-                s += "Aborting GetEvents. "
-                s += "Unable to extract 'table_name' from request: %s" % request
-                logging.info(s)
-                return
-        
-        try:
-            self.downloads_extracted = params['downloads_extracted']
-        except KeyError:
-            s =  "Version: %s\n" % __version__
-            s += "Unable to extract 'downloads_extracted' from params: %s" % params
-            logging.info(s)
+                # Table name not provided, use default
+                self.table_name = CDB_TABLE
 
-        if self.downloads_extracted is None:
+            # 'downloads_extracted' parameter
             try:
-                self.downloads_extracted = self.request.get('downloads_extracted')
-            except KeyError:
+                self.downloads_extracted = self.request.get('downloads_extracted').\
+                    lower() == 'true'
+            except Exception:
                 s =  "Version: %s\n" % __version__
-                s += "Aborting GetEvents. "
+                s += "Aborting. "
                 s += "Unable to extract 'downloads_extracted' from request: %s" % request
-                logging.info(s)
+                logging.error(s)
                 return
 
-        try:
-            self.searches_extracted = params['searches_extracted']
-        except KeyError:
-            s =  "Version: %s\n" % __version__
-            s += "Unable to extract 'searches_extracted' from params: %s" % params
-            logging.info(s)
-
-        if self.searches_extracted is None:
+            # 'searches_extracted' parameter
             try:
-                self.searches_extracted = self.request.get('searches_extracted')
+                self.searches_extracted = self.request.get('searches_extracted').\
+                    lower() == 'true'
             except KeyError:
                 s =  "Version: %s\n" % __version__
-                s += "Aborting GetEvents. "
+                s += "Aborting. "
                 s += "Unable to extract 'searches_extracted' from request: %s" % request
-                logging.info(s)
+                logging.error(s)
+                return
+        else:
+            # Get parameters from Period entity
+
+            # 'table_name' parameter
+            try:
+                self.table_name = period_entity.table_name
+                if self.table_name is None or len(self.table_name)==0:
+                    self.table_name = CDB_TABLE
+            except KeyError:
+                # default value for 'table_name' if not provided is None
+                self.table_name = CDB_TABLE
+
+            # 'downloads_extracted' parameter
+            try:
+                self.downloads_extracted = period_entity.downloads_extracted
+            except Exception:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting. "
+                s += "Unable to extract 'downloads_extracted' from Period"
+                logging.error(s)
+                return
+
+            # 'searches_extracted' parameter
+            try:
+                self.searches_extracted = period_entity.searches_extracted
+            except Exception:
+                s =  "Version: %s\n" % __version__
+                s += "Aborting. "
+                s += "Unable to extract 'searches_extracted' from Period"
+                logging.error(s)
                 return
 
         s =  "Version: %s\n" % __version__
@@ -109,36 +155,49 @@ class GetEvents(webapp2.RequestHandler):
         logging.info(s)
 
         # Start with downloads
-        if self.downloads_extracted is False:
+        if self.downloads_extracted == False:
             self.t = "download"
         # and continue with searches
-        elif self.searches_extracted is False:
+        elif self.searches_extracted == False:
             self.t = "search"
-        # if, by mistake, none is True...
+        # if both are True, downloads and searches were both extracted...
         else:
             # ... call 'process_events' and move on
             taskqueue.add(url=URI_PROCESS_EVENTS, queue_name=QUEUENAME)
             return
 
         # Get events
+        s =  "Version: %s\n" % __version__
+        s += "Getting events"
+        logging.info(s)
         err = self.get_events()
         if err:
+            s =  "Version: %s\n" % __version__
+            s += "Error from get_events(): %s" % err
+            logging.error(s)
             return
 
         # Parse events
+        s =  "Version: %s\n" % __version__
+        s += "Parsing events"
+        logging.info(s)
         err = self.parse_events()
         if err:
+            s =  "Version: %s\n" % __version__
+            s += "Error from parse_events(): %s" % err
+            logging.error(s)
             return
 
         # Update Period counts
+        s =  "Version: %s\n" % __version__
+        s += "Updating Period counts"
+        logging.info(s)
         err = self.update_period_counts()
         if err:
+            s =  "Version: %s\n" % __version__
+            s += "Error from update_period_counts(): %s" % err
+            logging.error(s)
             return
-
-        # Build temporary entities
-        s =  "Version: %s\n" % __version__
-        s += "Storing %d resources" % len(self.resources)
-        logging.info(s)
 
         r = []
         for resource in self.resources:
@@ -187,17 +246,32 @@ class GetEvents(webapp2.RequestHandler):
         }
         self.response.write(json.dumps(resp) + "\n")
 
-        # Update memcache
+        # Update Period entity with stat information
         if self.t == "search":
-            memcache.set("usagestats_parser_searches_extracted", True)
+            period_entity.searches_extracted=True
         else:
-            memcache.set("usagestats_parser_downloads_extracted", True)
+            period_entity.downloads_extracted=True
 
-        # If both are True, end now
-        p = memcache.get_multi(["searches_extracted", "downloads_extracted"],
-                               key_prefix="usagestats_parser_")
-        if p['searches_extracted'] is True and\
-           p['downloads_extracted'] is True:
+        k = period_entity.put()
+        if k != period_key:
+            s =  "Version: %s\n" % __version__
+            s += "Could not update processing properties in period %s" % self.period
+            logging.error(s)
+            self.error(500)
+            resp = {
+                "status": "error",
+                "message": s,
+                "data": {
+                    "period": self.period,
+                }
+            }
+            self.response.write(json.dumps(resp) + "\n")
+            return 1
+        
+        # If both downloads and searches have been extracted, end now
+        period_entity = period_key.get()
+        if period_entity.searches_extracted is True and\
+           period_entity.downloads_extracted is True:
             # Call 'process_events'
             s =  "Version: %s\n" % __version__
             s += "All searches and downloads extracted"
@@ -205,7 +279,6 @@ class GetEvents(webapp2.RequestHandler):
             taskqueue.add(url=URI_PROCESS_EVENTS, queue_name=QUEUENAME)
         else:
             taskqueue.add(url=URI_GET_EVENTS, queue_name=QUEUENAME)
-
         return
 
     def get_events(self):
@@ -389,8 +462,7 @@ class GetEvents(webapp2.RequestHandler):
             }
             self.response.write(json.dumps(resp) + "\n")
             return 1
-        else:
-            s =  "Version: %s\n" % __version__
-            s += "Period counts for %s events updated" % self.t
-            logging.info(s)
+        s =  "Version: %s\n" % __version__
+        s += "Period counts for %s events updated" % self.t
+        logging.info(s)
         return 0
