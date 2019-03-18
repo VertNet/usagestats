@@ -327,7 +327,7 @@ You can see the HTML rendered version of this report at:
 Raw text and JSON-formatted versions of the report are also available for
 download from this link. 
 
-A copy of the text version has been also been uploaded to your GitHub 
+A copy of the text version has also been uploaded to your GitHub 
 repository under the "reports" folder at:
 
 {1}
