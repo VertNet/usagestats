@@ -9,7 +9,7 @@
 __author__ = '@jotegui'
 __contributors__ = "Javier Otegui, John Wieczorek"
 __copyright__ = "Copyright 2018 vertnet.org"
-__version__ = "usagestats.py 2018-10-14T20:57-03:00"
+__version__ = "usagestats.py 2019-03-19T10:53-03:00"
 
 from admin.parser.InitExtraction import InitExtraction
 from admin.parser.GetEvents import GetEvents
