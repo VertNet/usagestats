@@ -42,9 +42,11 @@ class InitExtraction(webapp2.RequestHandler):
         taskqueue.add(url=URI_GET_EVENTS, queue_name=QUEUENAME)
 
         # Build response
+        s = "Period initialized and extractions enqueued. "
+        s += "Email will be sent to %s when finished." % EMAIL_RECIPIENT
         resp = {
             "status": "success",
-            "message": "Period initialized and extractions enqueued",
+            "message": s,
             "data": {
                 "period": self.period
             }
